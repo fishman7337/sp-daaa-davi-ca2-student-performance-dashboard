@@ -7552,6 +7552,12 @@ def _update_dash(
 server = dash_app.server
 
 
+@server.route("/healthz")
+def healthz():
+    """Lightweight health endpoint for Render checks."""
+    return "ok", 200
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8050"))
     dash_app.run(host="0.0.0.0", port=port, debug=False)

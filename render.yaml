@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: davi-ca2-dashboard
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:server --workers 1 --threads 2 --timeout 180 --graceful-timeout 180
