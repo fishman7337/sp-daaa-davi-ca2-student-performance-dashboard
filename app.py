@@ -1,7 +1,8 @@
-"""Dash app extracted from DAVI-CA2.ipynb for cloud deployment on Render.
+"""Student Performance Intelligence dashboard.
 
-This file is generated from the notebook's dashboard cell and intentionally keeps
-notebook logic intact while adding server-friendly startup and data loading.
+This Dash app was adapted from the CA2 analysis notebook for cloud deployment.
+The analytical logic is intentionally kept close to the original notebook while
+the runtime paths and startup behaviour are made deployment-friendly.
 """
 
 from __future__ import annotations
@@ -20,11 +21,25 @@ import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, dcc, html
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "Cleaned-Data"
+DEFAULT_PROCESSED_DATA_DIR = BASE_DIR / "data" / "processed"
+
+
+def _resolve_project_path(value: str | os.PathLike[str] | None, default: Path) -> Path:
+    """Resolve a configurable path relative to the repository root."""
+    if value in (None, ""):
+        return default
+
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return path
+    return BASE_DIR / path
+
+
+DATA_DIR = _resolve_project_path(os.getenv("DAVI_PROCESSED_DATA_DIR"), DEFAULT_PROCESSED_DATA_DIR)
 
 
 def _load_cleaned_excel(filename: str) -> pd.DataFrame:
-    """Load a cleaned workbook from the repository's Cleaned-Data folder."""
+    """Load a cleaned workbook from the processed data folder."""
     path = DATA_DIR / filename
     if not path.exists():
         raise FileNotFoundError(f"Missing required data file: {path}")
@@ -551,6 +566,43 @@ def _apply_dash1_layout(fig: go.Figure, title: str, height: int = 440, subtitle:
         linecolor="rgba(148,163,184,0.2)",
     )
     return fig
+
+
+def _get_profile_student_count() -> Optional[int]:
+    """Return the unique student count from the profile dataset when available."""
+    if STUDENT_ID_COL not in df_student_profile.columns:
+        return None
+
+    count = df_student_profile[STUDENT_ID_COL].dropna().nunique()
+    if pd.isna(count) or count <= 0:
+        return None
+    return int(count)
+
+
+def _dash_empty_figure(title: str, height: int = 420) -> go.Figure:
+    """Create a lightweight empty-state Plotly figure."""
+    fig = go.Figure()
+    fig.update_layout(
+        title=title,
+        height=height,
+        template="plotly_white",
+        margin=dict(l=48, r=32, t=72, b=48),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        annotations=[
+            dict(
+                text="No data available for the current selection.",
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=13, color="#64748b"),
+            )
+        ],
+    )
+    return fig
+
 
 def _sort_periods(periods: List[str]) -> List[str]:
     """Sort period labels by year/semester when possible, otherwise by name."""
@@ -7560,5 +7612,7 @@ def healthz():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8050"))
-    dash_app.run(host="0.0.0.0", port=port, debug=False)
+    host = os.getenv("HOST", "127.0.0.1")
+    debug = os.getenv("DASH_DEBUG", "false").lower() in {"1", "true", "yes", "on"}
+    dash_app.run(host=host, port=port, debug=debug)
 
