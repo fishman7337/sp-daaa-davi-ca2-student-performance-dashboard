@@ -8,17 +8,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
+    timeout-minutes: 30
     name: Test and Syntax Check
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
           cache: pip
@@ -31,19 +34,22 @@ jobs:
       - name: Run pytest
         run: python -m pytest
 
-      - name: Run Ruff syntax checks
-        run: python -m ruff check . --select E9,F63,F7,F82
+      - name: Run Ruff checks
+        run: python -m ruff check .
+
+      - name: Verify Ruff formatting
+        run: python -m ruff format --check .
 
   security:
+    timeout-minutes: 30
     name: Security Checks
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
           cache: pip

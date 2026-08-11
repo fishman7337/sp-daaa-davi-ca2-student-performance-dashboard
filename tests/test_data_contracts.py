@@ -3,9 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-
 from conftest import PROJECT_ROOT
-
 
 RAW_DATASETS = {
     "Course Codes.xlsx": ["CODE", "COURSE NAME"],

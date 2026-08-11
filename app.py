@@ -58,10 +58,6 @@ df_student_survey = _load_cleaned_excel("Student Survey.xlsx")
 warnings.filterwarnings("ignore")
 
 
-
-
-
-
 STUDENT_ID_COL = "Student Id"
 DERIVED_COURSE_COL = "Course Code (Derived)"
 COURSE_NAME_COL = "Course Name (Derived)"
@@ -151,8 +147,6 @@ DASH1_TEMPLATE = go.layout.Template(
 )
 
 
-
-
 # =========================
 # 1) Helper Functions (PEP 257 + Google Docstrings)
 # =========================
@@ -164,6 +158,7 @@ def to_string_clean(series: pd.Series) -> pd.Series:
 
     Returns:
         Cleaned pandas string Series.
+
     """
     s = series.astype("string").str.strip()
     return s.replace({"": pd.NA, "-": pd.NA, "N.A.": "N.A.", "N.A": "N.A."})
@@ -177,10 +172,10 @@ def extract_course_code(student_id: pd.Series) -> pd.Series:
 
     Returns:
         Series of extracted 4-digit course codes (string dtype).
+
     """
     s = to_string_clean(student_id)
     return s.str.extract(r"^(\d{4})", expand=False).astype("string")
-
 
 
 def _build_course_name_map(df_codes: Optional[pd.DataFrame]) -> Dict[str, str]:
@@ -189,12 +184,7 @@ def _build_course_name_map(df_codes: Optional[pd.DataFrame]) -> Dict[str, str]:
         return {}
     if COURSE_CODE_MASTER_COL not in df_codes.columns or COURSE_NAME_MASTER_COL not in df_codes.columns:
         return {}
-    codes = (
-        df_codes[COURSE_CODE_MASTER_COL]
-        .astype("string")
-        .str.strip()
-        .replace({"": pd.NA})
-    )
+    codes = df_codes[COURSE_CODE_MASTER_COL].astype("string").str.strip().replace({"": pd.NA})
     codes = codes.str.zfill(4)
     names = df_codes[COURSE_NAME_MASTER_COL].astype("string").str.strip()
     mapping = {}
@@ -206,6 +196,8 @@ def _build_course_name_map(df_codes: Optional[pd.DataFrame]) -> Dict[str, str]:
         else:
             mapping[str(code)] = str(name)
     return mapping
+
+
 def safe_float(series: pd.Series, dtype: str = "Float32") -> pd.Series:
     """Coerce a Series to numeric float, safely preserving missing values.
 
@@ -215,6 +207,7 @@ def safe_float(series: pd.Series, dtype: str = "Float32") -> pd.Series:
 
     Returns:
         Numeric Series with nullable float dtype.
+
     """
     return pd.to_numeric(series, errors="coerce").astype(dtype)
 
@@ -228,6 +221,7 @@ def safe_int(series: pd.Series, dtype: str = "Int16") -> pd.Series:
 
     Returns:
         Numeric Series with nullable integer dtype.
+
     """
     return pd.to_numeric(series, errors="coerce").astype(dtype)
 
@@ -244,6 +238,7 @@ def add_completion_status(df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         DataFrame with a new 'Completion Status' column.
+
     """
     out = df.copy()
 
@@ -283,6 +278,7 @@ def build_analytics_df(
 
     Returns:
         Merged analytics DataFrame.
+
     """
     profile = df_student_profile.copy()
     result = df_student_result.copy()
@@ -299,14 +295,9 @@ def build_analytics_df(
     course_map = _build_course_name_map(df_course_codes)
     if course_map:
         profile[COURSE_NAME_COL] = profile[DERIVED_COURSE_COL].map(course_map)
-        profile[COURSE_NAME_COL] = (
-            profile[COURSE_NAME_COL]
-            .fillna(profile[DERIVED_COURSE_COL])
-            .astype("string")
-        )
+        profile[COURSE_NAME_COL] = profile[COURSE_NAME_COL].fillna(profile[DERIVED_COURSE_COL]).astype("string")
     else:
         profile[COURSE_NAME_COL] = profile[DERIVED_COURSE_COL].astype("string")
-
 
     # Light normalisation for commonly used columns
     if GENDER_COL in profile.columns:
@@ -331,9 +322,8 @@ def build_analytics_df(
         if col in survey.columns:
             survey[col] = safe_int(survey[col], "Int8")
 
-    merged = (
-        profile.merge(result, on=STUDENT_ID_COL, how="left", suffixes=("", "_result"))
-        .merge(survey, on=STUDENT_ID_COL, how="left", suffixes=("", "_survey"))
+    merged = profile.merge(result, on=STUDENT_ID_COL, how="left", suffixes=("", "_result")).merge(
+        survey, on=STUDENT_ID_COL, how="left", suffixes=("", "_survey")
     )
 
     merged = add_completion_status(merged)
@@ -394,12 +384,11 @@ def filter_df(
 
     Returns:
         Filtered DataFrame.
+
     """
     out = df.copy()
 
     course_col = COURSE_DISPLAY_COL if COURSE_DISPLAY_COL in out.columns else DERIVED_COURSE_COL
-
-
 
     if courses and apply_courses:
         out = out[out[course_col].isin(list(courses))]
@@ -441,7 +430,6 @@ def filter_df(
     return out
 
 
-
 def _apply_dynamic_risk(
     df: pd.DataFrame,
     gpa_threshold: float,
@@ -451,9 +439,7 @@ def _apply_dynamic_risk(
     out = df.copy()
 
     gpa_vals = (
-        pd.to_numeric(out[GPA_COL], errors="coerce")
-        if GPA_COL in out.columns
-        else pd.Series(np.nan, index=out.index)
+        pd.to_numeric(out[GPA_COL], errors="coerce") if GPA_COL in out.columns else pd.Series(np.nan, index=out.index)
     )
     att_vals = (
         pd.to_numeric(out[ATTEND_COL], errors="coerce")
@@ -606,6 +592,7 @@ def _dash_empty_figure(title: str, height: int = 420) -> go.Figure:
 
 def _sort_periods(periods: List[str]) -> List[str]:
     """Sort period labels by year/semester when possible, otherwise by name."""
+
     def _key(p: str) -> Tuple[int, int, str]:
         s = str(p)
         year_match = re.search(r"(\d{4})", s)
@@ -613,7 +600,9 @@ def _sort_periods(periods: List[str]) -> List[str]:
         year = int(year_match.group(1)) if year_match else 9999
         sem = int(sem_match.group(1)) if sem_match else 9
         return (year, sem, s)
+
     return sorted(periods, key=_key)
+
 
 def _latest_semester_snapshot(df: pd.DataFrame) -> pd.DataFrame:
     """Return the latest period per student for snapshot-style metrics."""
@@ -636,7 +625,7 @@ def _latest_semester_snapshot(df: pd.DataFrame) -> pd.DataFrame:
 def make_kpi_figure(df: pd.DataFrame, total_override: Optional[float] = None) -> go.Figure:
     """Create a summary panel for risk share distribution."""
     title = "Risk Threshold Pulse: Share"
-    subtitle = "Shares show low/high risk based on GPA/attendance thresholds." 
+    subtitle = "Shares show low/high risk based on GPA/attendance thresholds."
 
     if df.empty:
         fig = _apply_dash1_layout(go.Figure(), title, height=420, subtitle=subtitle)
@@ -739,1641 +728,6 @@ def make_kpi_figure(df: pd.DataFrame, total_override: Optional[float] = None) ->
     return fig
 
 
-def make_dashboard_1_figures(
-    df: pd.DataFrame,
-    top_n: int = 12,
-    gpa_threshold: Optional[float] = None,
-    att_threshold: Optional[float] = None,
-    total_override: Optional[float] = None,
-) -> Dict[str, go.Figure]:
-    """Create Dashboard 1 figures (Outcomes & Risk).
-
-    Charts:
-    - Risk threshold share (KPI)
-    - Attendance vs GPA with thresholds + linear fit
-    - Risk quadrant density (low/high GPA vs attendance)
-    - Funding x course level matrix (mean GPA)
-    - GPA by highest qualification (box)
-
-    Args:
-        df: Filtered analytics DataFrame.
-        top_n: Number of courses to display in course-level charts.
-        gpa_threshold: GPA threshold for risk overlay lines.
-        att_threshold: Attendance threshold for risk overlay lines.
-
-    Returns:
-        Dict of figures keyed by name.
-    """
-    figs: Dict[str, go.Figure] = {}
-
-    def _course_label_margin(labels: List[str], min_margin: int = 200, max_margin: int = 360) -> int:
-        if not labels:
-            return min_margin
-        max_len = max(len(str(label)) for label in labels)
-        return min(max_margin, max(min_margin, int(max_len * 9)))
-
-
-    snapshot_df = _latest_semester_snapshot(df)
-
-    if total_override is None and STUDENT_ID_COL in snapshot_df.columns:
-        outcome_mask = pd.Series(False, index=snapshot_df.index)
-        if GPA_COL in snapshot_df.columns:
-            outcome_mask |= pd.to_numeric(snapshot_df[GPA_COL], errors="coerce").notna()
-        if ATTEND_COL in snapshot_df.columns:
-            outcome_mask |= pd.to_numeric(snapshot_df[ATTEND_COL], errors="coerce").notna()
-        if outcome_mask.any():
-            total_override = float(snapshot_df.loc[outcome_mask, STUDENT_ID_COL].nunique())
-        else:
-            profile_count = _get_profile_student_count()
-            if profile_count is not None:
-                total_override = float(profile_count)
-                globals()["PROFILE_STUDENT_COUNT"] = int(profile_count)
-
-
-    risk_series = None
-    if RISK_TIER_COL in snapshot_df.columns:
-        risk_series = snapshot_df[RISK_TIER_COL].astype("string").str.strip().str.title()
-    elif RISK_SCORE_COL in snapshot_df.columns:
-        scores = pd.to_numeric(snapshot_df[RISK_SCORE_COL], errors="coerce")
-        risk_series = pd.Series(
-            np.select(
-                [scores >= 0.7, scores >= 0.5],
-                ["High", "Medium"],
-                default="Low",
-            ),
-            index=snapshot_df.index,
-        )
-        risk_series = risk_series.where(scores.notna(), other=pd.NA).astype("string")
-    elif RISK_FLAG_COL in snapshot_df.columns:
-        flags = pd.to_numeric(snapshot_df[RISK_FLAG_COL], errors="coerce")
-        risk_series = pd.Series(np.where(flags == 1, "High", "Low"), index=snapshot_df.index)
-        risk_series = risk_series.where(flags.notna(), other=pd.NA).astype("string")
-
-    risk_color_map = {"High": "#EF4444", "Medium": "#F4B400", "Low": "#22C55E"}
-
-    safe_top_n = int(top_n) if top_n else 12
-    safe_top_n = max(TOP_N_MIN, min(safe_top_n, TOP_N_MAX))
-    course_col = COURSE_DISPLAY_COL if COURSE_DISPLAY_COL in snapshot_df.columns else DERIVED_COURSE_COL
-    course_count = int(snapshot_df[course_col].nunique(dropna=True)) if course_col in snapshot_df.columns else 0
-
-    if course_count > 0:
-        safe_top_n = min(safe_top_n, course_count)
-    course_title_suffix = f"Top {safe_top_n}"
-    if course_count > 0 and safe_top_n >= course_count:
-        course_title_suffix = "All Courses"
-
-
-
-    figs["kpi"] = make_kpi_figure(snapshot_df, total_override=total_override)
-
-    def _make_highest_edu_gpa(df_local: pd.DataFrame):
-        """Build GPA distribution by highest qualification (top groups)."""
-        subtitle = "Box shows GPA spread by highest qualification (top groups by cohort size)."
-        if HIGHEST_EDU_COL not in df_local.columns or GPA_COL not in df_local.columns:
-            return go.Figure(), None, "Unavailable", subtitle
-
-        edu_df = df_local[[HIGHEST_EDU_COL, GPA_COL]].copy()
-        edu_df[HIGHEST_EDU_COL] = edu_df[HIGHEST_EDU_COL].astype("string").str.strip()
-        edu_df[GPA_COL] = pd.to_numeric(edu_df[GPA_COL], errors="coerce")
-        edu_df = edu_df[
-            edu_df[HIGHEST_EDU_COL].notna()
-            & edu_df[GPA_COL].notna()
-            & (edu_df[HIGHEST_EDU_COL].str.len() > 0)
-        ].copy()
-        if edu_df.empty:
-            return go.Figure(), None, "Unavailable", subtitle
-
-        counts = edu_df[HIGHEST_EDU_COL].value_counts()
-        top_n_edu = min(8, len(counts))
-        top_labels = counts.head(top_n_edu).index.tolist()
-        edu_df["_edu_group"] = np.where(
-            edu_df[HIGHEST_EDU_COL].isin(top_labels), edu_df[HIGHEST_EDU_COL], "Other"
-        )
-        edu_df["_count"] = edu_df["_edu_group"].map(edu_df["_edu_group"].value_counts())
-        order = (
-            edu_df.groupby("_edu_group", observed=False)[GPA_COL]
-            .median()
-            .sort_values()
-            .index.tolist()
-        )
-
-        suffix = "All Qualifications" if len(counts) <= top_n_edu else f"Top {top_n_edu} + Other"
-        fig = px.box(
-            edu_df,
-            x=GPA_COL,
-            y="_edu_group",
-            points="outliers",
-            custom_data=["_count"],
-        )
-        fig.update_traces(
-            marker=dict(color="rgba(34,211,238,0.7)"),
-            line=dict(color="rgba(226,232,240,0.65)"),
-            hovertemplate=(
-                "Qualification=%{y}<br>GPA=%{x:.2f}"
-                "<br>Students=%{customdata[0]}<extra></extra>"
-            ),
-        )
-        fig.update_layout(showlegend=False)
-        fig.update_yaxes(title="Highest Qualification", categoryorder="array", categoryarray=order)
-        fig.update_xaxes(title="GPA")
-        return fig, order, suffix, subtitle
-
-    edu_fig, edu_order, edu_suffix, edu_subtitle = _make_highest_edu_gpa(snapshot_df)
-    edu_title = f"GPA by Highest Qualification ({edu_suffix})"
-    figs["gpa_dist"] = _apply_dash1_layout(
-        edu_fig,
-        edu_title,
-        height=440,
-        subtitle=f"{edu_subtitle} Filters ignored: GPA/attendance range and highest qualification.",
-    )
-    if edu_order:
-        figs["gpa_dist"].update_layout(
-            margin=dict(l=_course_label_margin(edu_order), r=28, t=140, b=64)
-        )
-    else:
-        figs["gpa_dist"].update_layout(margin=dict(t=140), title=dict(y=0.94))
-
-    if GPA_COL in snapshot_df.columns and ATTEND_COL in snapshot_df.columns:
-        hover_fields = []
-        hovertemplate_parts = ["Attendance=%{x:.3g}%", "GPA=%{y:.3g}"]
-        scatter_kwargs = {
-            "x": ATTEND_COL,
-            "y": GPA_COL,
-        }
-        scatter_kwargs["labels"] = {ATTEND_COL: "Attendance (%)", GPA_COL: "GPA", course_col: "Course"}
-
-        scatter_df = snapshot_df.copy()
-        risk_col = None
-        if RISK_TIER_COL in scatter_df.columns:
-            scatter_df["_risk_tier"] = scatter_df[RISK_TIER_COL].astype("string").str.strip().str.title()
-            risk_col = "_risk_tier"
-        elif RISK_SCORE_COL in scatter_df.columns:
-            scores = pd.to_numeric(scatter_df[RISK_SCORE_COL], errors="coerce")
-            scatter_df["_risk_tier"] = np.where(
-                scores >= 0.7,
-                "High",
-                np.where(scores >= 0.5, "Medium", "Low"),
-            )
-            risk_col = "_risk_tier"
-        elif RISK_FLAG_COL in scatter_df.columns:
-            flags = pd.to_numeric(scatter_df[RISK_FLAG_COL], errors="coerce")
-            scatter_df["_risk_tier"] = np.where(flags == 1, "High", "Low")
-            risk_col = "_risk_tier"
-
-        if risk_col is not None:
-            scatter_kwargs["color"] = risk_col
-            scatter_kwargs["color_discrete_map"] = {"High": "#EF4444", "Medium": "#F4B400", "Low": "#22C55E"}
-            hover_fields.append(risk_col)
-            risk_idx = len(hover_fields) - 1
-            hovertemplate_parts.append(f"Risk=%{{customdata[{risk_idx}]}}")
-        elif course_col in scatter_df.columns:
-            course_count = scatter_df[course_col].nunique(dropna=True)
-            if course_count <= 8:
-                scatter_kwargs["color"] = course_col
-                hover_fields.append(course_col)
-                course_idx = len(hover_fields) - 1
-                hovertemplate_parts.append(f"Course=%{{customdata[{course_idx}]}}")
-
-        if "Completion Status" in scatter_df.columns:
-            scatter_kwargs["symbol"] = "Completion Status"
-            scatter_kwargs["symbol_map"] = {"Completed": "circle", "Ongoing": "triangle-up"}
-            hover_fields.append("Completion Status")
-            status_idx = len(hover_fields) - 1
-            hovertemplate_parts.append(f"Status=%{{customdata[{status_idx}]}}")
-
-        if hover_fields:
-            scatter_kwargs["custom_data"] = hover_fields
-        title_text = "Attendance vs GPA (Threshold Overlay)"
-        gpa_vs_att = px.scatter(
-            scatter_df,
-            title=title_text,
-            **scatter_kwargs,
-        )
-        gpa_vs_att.update_traces(
-            marker=dict(opacity=0.8, line=dict(width=0)),
-            hovertemplate="<br>".join(hovertemplate_parts) + "<extra></extra>",
-        )
-        gpa_vs_att.update_xaxes(title="Attendance (%)")
-        gpa_vs_att.update_yaxes(title="GPA")
-        show_legend = False
-        if "color" in scatter_kwargs:
-            legend_title = "Risk Tier" if scatter_kwargs["color"] == risk_col else "Course"
-            gpa_vs_att.update_layout(legend_title_text=legend_title)
-            show_legend = True
-        if "symbol" in scatter_kwargs:
-            show_legend = True
-        if not show_legend:
-            gpa_vs_att.update_layout(showlegend=False)
-
-        x_vals = pd.to_numeric(scatter_df[ATTEND_COL], errors="coerce")
-        y_vals = pd.to_numeric(scatter_df[GPA_COL], errors="coerce")
-        mask = x_vals.notna() & y_vals.notna()
-        if mask.sum() >= 4:
-            att_q1, att_q3 = np.quantile(x_vals[mask], [0.25, 0.75])
-            gpa_q1, gpa_q3 = np.quantile(y_vals[mask], [0.25, 0.75])
-            gpa_vs_att.add_vline(x=float(att_q1), line_dash="dot", line_color="rgba(30,36,48,0.35)")
-            gpa_vs_att.add_vline(x=float(att_q3), line_dash="dot", line_color="rgba(30,36,48,0.35)")
-            gpa_vs_att.add_hline(y=float(gpa_q1), line_dash="dot", line_color="rgba(30,36,48,0.35)")
-            gpa_vs_att.add_hline(y=float(gpa_q3), line_dash="dot", line_color="rgba(30,36,48,0.35)")
-
-        if mask.sum() >= 2 and x_vals[mask].nunique() > 1:
-            slope, intercept = np.polyfit(x_vals[mask], y_vals[mask], 1)
-            corr = float(np.corrcoef(x_vals[mask], y_vals[mask])[0, 1])
-            x_line = np.array([x_vals[mask].min(), x_vals[mask].max()])
-            y_line = slope * x_line + intercept
-            gpa_vs_att.add_trace(
-                go.Scatter(
-                    x=x_line,
-                    y=y_line,
-                    mode="lines",
-                    name=f"Linear fit (r={corr:.2f})",
-                    line=dict(color="#F4B400", width=2),
-                    hovertemplate=f"Linear fit<br>y={slope:.3f}x+{intercept:.3f}<extra></extra>",
-                )
-            )
-
-        gpa_thr = None
-        att_thr = None
-        try:
-            gpa_thr = float(gpa_threshold) if gpa_threshold is not None else None
-        except (TypeError, ValueError):
-            gpa_thr = None
-        try:
-            att_thr = float(att_threshold) if att_threshold is not None else None
-        except (TypeError, ValueError):
-            att_thr = None
-
-        if att_thr is not None and np.isfinite(att_thr):
-            gpa_vs_att.add_vline(x=float(att_thr), line_dash="dash", line_color="rgba(239,68,68,0.7)")
-        if gpa_thr is not None and np.isfinite(gpa_thr):
-            gpa_vs_att.add_hline(y=float(gpa_thr), line_dash="dash", line_color="rgba(239,68,68,0.7)")
-
-        figs["gpa_vs_att"] = _apply_dash1_layout(
-            gpa_vs_att,
-            title_text,
-            height=480,
-            subtitle="Color shows risk tier; symbol shows completion status. Dotted lines mark quartiles; dashed lines show thresholds; line shows linear fit.",
-        )
-    else:
-        figs["gpa_vs_att"] = _apply_dash1_layout(
-            go.Figure(),
-            "Attendance vs GPA (Threshold Overlay) (Unavailable)",
-            height=480,
-            subtitle="Color shows risk tier; symbol shows completion status. Dotted lines mark quartiles; dashed lines show thresholds; line shows linear fit.",
-        )
-    # --- Risk quadrant density (GPA vs attendance) ---
-    if GPA_COL in snapshot_df.columns and ATTEND_COL in snapshot_df.columns:
-        gpa_vals = pd.to_numeric(snapshot_df[GPA_COL], errors="coerce")
-        att_vals = pd.to_numeric(snapshot_df[ATTEND_COL], errors="coerce")
-        mask = gpa_vals.notna() & att_vals.notna()
-        if mask.any():
-            gpa_fallback = float(gpa_vals[mask].median())
-            att_fallback = float(att_vals[mask].median())
-            try:
-                gpa_thr = float(gpa_threshold) if gpa_threshold is not None else gpa_fallback
-            except (TypeError, ValueError):
-                gpa_thr = gpa_fallback
-            try:
-                att_thr = float(att_threshold) if att_threshold is not None else att_fallback
-            except (TypeError, ValueError):
-                att_thr = att_fallback
-
-            quad_df = pd.DataFrame(
-                {
-                    "GPA": gpa_vals[mask],
-                    "Attendance": att_vals[mask],
-                }
-            )
-            quad_df["GPA Band"] = np.where(quad_df["GPA"] >= gpa_thr, "High GPA", "Low GPA")
-            quad_df["Attendance Band"] = np.where(
-                quad_df["Attendance"] >= att_thr, "High Attendance", "Low Attendance"
-            )
-
-            quad = (
-                quad_df.groupby(["GPA Band", "Attendance Band"], observed=False)
-                .size()
-                .reset_index(name="Count")
-            )
-            pivot = quad.pivot(index="GPA Band", columns="Attendance Band", values="Count")
-            pivot = pivot.reindex(
-                index=["Low GPA", "High GPA"],
-                columns=["Low Attendance", "High Attendance"],
-            ).fillna(0)
-            total = float(pivot.values.sum())
-            pct = pivot / total * 100.0 if total > 0 else pivot.copy()
-            text = [
-                [
-                    f"{int(cnt)}<br>({pct_val:.1f}%)" if total > 0 else f"{int(cnt)}"
-                    for cnt, pct_val in zip(row_cnt, row_pct)
-                ]
-                for row_cnt, row_pct in zip(pivot.values, pct.values)
-            ]
-
-            heat = go.Figure(
-                data=go.Heatmap(
-                    z=pivot.values,
-                    x=pivot.columns.tolist(),
-                    y=pivot.index.tolist(),
-                    text=text,
-                    texttemplate="%{text}",
-                    textfont=dict(color=DASH1_TEXT, size=12),
-                    colorscale=[[0.0, "#0F172A"], [0.5, "#2563EB"], [1.0, "#EF4444"]],
-                    hovertemplate="GPA=%{y}<br>Attendance=%{x}<br>Students=%{z}<extra></extra>",
-                )
-            )
-            heat.update_xaxes(title="Attendance Band")
-            heat.update_yaxes(title="GPA Band")
-            heat.update_layout(showlegend=False)
-            heat.add_annotation(
-                x="Low Attendance",
-                y="Low GPA",
-                text="High Risk Pocket",
-                showarrow=True,
-                arrowhead=2,
-                arrowcolor="#EF4444",
-                font=dict(color="#F8FAFC", size=11),
-                bgcolor="rgba(239,68,68,0.25)",
-            )
-            figs["risk_quadrant"] = _apply_dash1_layout(
-                heat,
-                "Risk Quadrant Density",
-                height=360,
-                subtitle=(
-                    "Quadrant shares based on GPA & attendance thresholds; focus on Low GPA + Low Attendance."
-                ),
-            )
-        else:
-            figs["risk_quadrant"] = _apply_dash1_layout(
-                go.Figure(),
-                "Risk Quadrant Density (Unavailable)",
-                height=360,
-                subtitle=(
-                    "Quadrant shares based on GPA & attendance thresholds; focus on Low GPA + Low Attendance."
-                ),
-            )
-    else:
-        figs["risk_quadrant"] = _apply_dash1_layout(
-            go.Figure(),
-            "Risk Quadrant Density (Unavailable)",
-            height=360,
-            subtitle=(
-                "Quadrant shares based on GPA & attendance thresholds; focus on Low GPA + Low Attendance."
-            ),
-        )
-
-    if ATTEND_COL in snapshot_df.columns and "Completion Status" in snapshot_df.columns:
-        att_df = snapshot_df[[ATTEND_COL, "Completion Status"]].copy()
-        att_df[ATTEND_COL] = pd.to_numeric(att_df[ATTEND_COL], errors="coerce")
-        status_series = att_df["Completion Status"].astype("string").str.strip().str.lower()
-        att_df = att_df[att_df[ATTEND_COL].notna() & status_series.notna()].copy()
-        if not att_df.empty:
-            bins = list(range(0, 101, 10))
-            labels = [f"{bins[i]}-{bins[i+1]}" for i in range(len(bins) - 1)]
-            att_df["Band"] = pd.cut(
-                att_df[ATTEND_COL], bins=bins, labels=labels, include_lowest=True
-            )
-            att_df["Completed"] = status_series == "completed"
-            band_stats = (
-                att_df.groupby("Band", dropna=False, observed=False)["Completed"]
-                .agg(["mean", "count"])
-                .reset_index()
-            )
-            band_stats = band_stats[band_stats["Band"].notna()]
-            band_stats["Rate"] = band_stats["mean"] * 100.0
-            comp_fig = go.Figure()
-            comp_fig.add_trace(
-                go.Bar(
-                    x=band_stats["Band"].astype(str),
-                    y=band_stats["Rate"],
-                    marker_color=DASH1_COLORWAY[0],
-                    text=[f"{val:.3g}%" for val in band_stats["Rate"]],
-                    textposition="outside",
-                    customdata=band_stats[["count"]].to_numpy(),
-                    hovertemplate=(
-                        "Attendance Band=%{x}<br>Completion=%{y:.3g}%"
-                        "<br>Students=%{customdata[0]}<extra></extra>"
-                    ),
-                )
-            )
-            comp_fig.update_yaxes(title="Completion Rate (%)", range=[0, 100])
-            comp_fig.update_xaxes(title="Attendance Band (%)")
-            figs["completion_by_att"] = _apply_dash1_layout(
-                comp_fig,
-                "Completion Rate by Attendance Band",
-                height=360,
-                subtitle="Higher bars indicate stronger completion in that attendance band.",
-            )
-        else:
-            figs["completion_by_att"] = _apply_dash1_layout(
-                go.Figure(),
-                "Completion Rate by Attendance Band (Unavailable)",
-                height=360,
-                subtitle="Higher bars indicate stronger completion in that attendance band.",
-            )
-    else:
-        figs["completion_by_att"] = _apply_dash1_layout(
-            go.Figure(),
-            "Completion Rate by Attendance Band (Unavailable)",
-            height=360,
-            subtitle="Higher bars indicate stronger completion in that attendance band.",
-        )
-
-    # --- Funding x Course Level matrix ---
-    if COURSE_FUNDING_COL in snapshot_df.columns and COURSE_LEVEL_COL in snapshot_df.columns and GPA_COL in snapshot_df.columns:
-        matrix_df = snapshot_df[[COURSE_FUNDING_COL, COURSE_LEVEL_COL, GPA_COL, STUDENT_ID_COL]].copy()
-        matrix_df[COURSE_FUNDING_COL] = matrix_df[COURSE_FUNDING_COL].astype("string").str.strip()
-        matrix_df[COURSE_LEVEL_COL] = matrix_df[COURSE_LEVEL_COL].astype("string").str.strip()
-        matrix_df[GPA_COL] = pd.to_numeric(matrix_df[GPA_COL], errors="coerce")
-        matrix_df = matrix_df[
-            matrix_df[COURSE_FUNDING_COL].notna()
-            & (matrix_df[COURSE_FUNDING_COL].str.len() > 0)
-            & matrix_df[COURSE_LEVEL_COL].notna()
-            & (matrix_df[COURSE_LEVEL_COL].str.len() > 0)
-            & matrix_df[GPA_COL].notna()
-        ].copy()
-        if not matrix_df.empty:
-            stats = (
-                matrix_df.groupby([COURSE_LEVEL_COL, COURSE_FUNDING_COL], observed=False)
-                .agg(**{"Mean GPA": (GPA_COL, "mean"), "Students": (STUDENT_ID_COL, "nunique")})
-                .reset_index()
-            )
-            level_candidates = stats[COURSE_LEVEL_COL].unique().tolist()
-            preferred_levels = ["Certificate", "Diploma", "Specialist Diploma", "Other"]
-            level_order = [lvl for lvl in preferred_levels if lvl in level_candidates]
-            level_order += [lvl for lvl in level_candidates if lvl not in level_order]
-            funding_order = (
-                stats.groupby(COURSE_FUNDING_COL, observed=False)["Mean GPA"]
-                .mean()
-                .sort_values(ascending=False)
-                .index.tolist()
-            )
-            pivot = (
-                stats.pivot(index=COURSE_LEVEL_COL, columns=COURSE_FUNDING_COL, values="Mean GPA")
-                .reindex(index=level_order, columns=funding_order)
-            )
-            count_pivot = (
-                stats.pivot(index=COURSE_LEVEL_COL, columns=COURSE_FUNDING_COL, values="Students")
-                .reindex(index=level_order, columns=funding_order)
-                .fillna(0)
-            )
-            text = []
-            for lvl in pivot.index:
-                row = []
-                for fund in pivot.columns:
-                    mean_val = pivot.loc[lvl, fund]
-                    count_val = count_pivot.loc[lvl, fund]
-                    if pd.isna(mean_val):
-                        row.append("")
-                    else:
-                        row.append(f"{mean_val:.2f}<br>n={int(count_val)}")
-                text.append(row)
-
-            heat = go.Figure(
-                data=go.Heatmap(
-                    z=pivot.values,
-                    x=pivot.columns.tolist(),
-                    y=pivot.index.tolist(),
-                    text=text,
-                    texttemplate="%{text}",
-                    textfont=dict(size=11, color=DASH1_TEXT),
-                    zmin=0,
-                    zmax=4,
-                    colorscale=[[0.0, "#0B1222"], [0.5, "#2563EB"], [1.0, "#38BDF8"]],
-                    hovertemplate="Level=%{y}<br>Funding=%{x}<br>Mean GPA=%{z:.2f}<extra></extra>",
-                )
-            )
-            heat.update_xaxes(title="Funding Type")
-            heat.update_yaxes(title="Course Level")
-            figs["funding_level_matrix"] = _apply_dash1_layout(
-                heat,
-                "Funding x Course Level Outcomes",
-                height=420,
-                subtitle="Heatmap shows mean GPA by funding and course level; labels include cohort size.",
-            )
-        else:
-            figs["funding_level_matrix"] = _apply_dash1_layout(
-                go.Figure(),
-                "Funding x Course Level Outcomes (Unavailable)",
-                height=420,
-                subtitle="Heatmap shows mean GPA by funding and course level; labels include cohort size.",
-            )
-    else:
-        figs["funding_level_matrix"] = _apply_dash1_layout(
-            go.Figure(),
-            "Funding x Course Level Outcomes (Unavailable)",
-            height=420,
-            subtitle="Heatmap shows mean GPA by funding and course level; labels include cohort size.",
-        )
-
-    # --- Momentum gap by risk tier ---
-    if MOMENTUM_GAP_COL in snapshot_df.columns and risk_series is not None:
-        gap_vals = pd.to_numeric(snapshot_df[MOMENTUM_GAP_COL], errors="coerce")
-        mask = gap_vals.notna() & risk_series.notna()
-        if mask.any():
-            plot_df = pd.DataFrame({"Gap": gap_vals[mask], "Risk Tier": risk_series[mask]})
-            plot_df = plot_df[plot_df["Risk Tier"].isin(["High", "Medium", "Low"])]
-            if not plot_df.empty:
-                gap_fig = go.Figure()
-                order = ["High", "Medium", "Low"]
-                for tier in order:
-                    vals = plot_df.loc[plot_df["Risk Tier"] == tier, "Gap"]
-                    if vals.empty:
-                        continue
-                    gap_fig.add_trace(
-                        go.Violin(
-                            y=vals,
-                            name=str(tier),
-                            box=dict(visible=True),
-                            meanline=dict(visible=True),
-                            line_color=risk_color_map.get(tier, DASH1_COLORWAY[0]),
-                            fillcolor=risk_color_map.get(tier, DASH1_COLORWAY[0]),
-                            opacity=0.65,
-                            hovertemplate="Risk Tier=%{x}<br>GPA Residual=%{y:.3g}<extra></extra>",
-                        )
-                    )
-                gap_fig.add_hline(y=0, line_dash="dot", line_color="rgba(148,163,184,0.6)")
-                gap_fig.update_xaxes(title="Risk Tier")
-                gap_fig.update_yaxes(title="GPA Residual (Actual - Expected)")
-                figs["momentum_gap"] = _apply_dash1_layout(
-                    gap_fig,
-                    "Momentum Gap by Risk Tier",
-                    height=420,
-                    subtitle="Highlights over- and under-performance relative to attendance expectations.",
-                )
-            else:
-                figs["momentum_gap"] = _apply_dash1_layout(
-                    go.Figure(),
-                    "Momentum Gap by Risk Tier (Unavailable)",
-                    height=420,
-                    subtitle="Highlights over- and under-performance relative to attendance expectations.",
-                )
-        else:
-            figs["momentum_gap"] = _apply_dash1_layout(
-                go.Figure(),
-                "Momentum Gap by Risk Tier (Unavailable)",
-                height=420,
-                subtitle="Highlights over- and under-performance relative to attendance expectations.",
-            )
-    else:
-        figs["momentum_gap"] = _apply_dash1_layout(
-            go.Figure(),
-            "Momentum Gap by Risk Tier (Unavailable)",
-            height=420,
-            subtitle="Highlights over- and under-performance relative to attendance expectations.",
-        )
-
-    if GPA_COL in snapshot_df.columns and course_col in snapshot_df.columns:
-        course_stats = (
-            snapshot_df.groupby(course_col, dropna=False, observed=False)[GPA_COL]
-            .agg(["mean", "count"])
-            .reset_index()
-            .rename(columns={"mean": "Mean GPA", "count": "Student Count"})
-        )
-        if not course_stats.empty:
-            course_filtered = course_stats[course_stats["Student Count"] >= MIN_COURSE_COUNT]
-            if course_filtered.empty:
-                course_filtered = course_stats.copy()
-
-            course_top = (
-                course_filtered.sort_values("Mean GPA", ascending=False)
-                .head(safe_top_n)
-                .sort_values("Mean GPA", ascending=True)
-                .reset_index(drop=True)
-            )
-
-            course_fig = px.bar(
-                course_top,
-                x="Mean GPA",
-                y=course_col,
-                orientation="h",
-                color="Mean GPA",
-                color_continuous_scale=["#9AD0FF", "#0B6EFD"],
-                hover_data={"Mean GPA": ":.3g", "Student Count": True},
-                title="Mean GPA by Course",
-                labels={course_col: "Course"},
-            )
-            course_fig.update_layout(coloraxis_showscale=False)
-            course_fig.update_traces(
-                text=[f"{val:.3g}" for val in course_top["Mean GPA"]],
-                texttemplate="%{text}",
-                textposition="outside",
-                textfont=dict(color=DASH1_TEXT, size=11),
-                cliponaxis=False,
-                customdata=course_top[["Student Count"]].to_numpy(),
-                hovertemplate="Course=%{y}<br>Mean GPA=%{x:.3g}<br>Students=%{customdata[0]}<extra></extra>",
-            )
-            course_fig.update_layout(showlegend=False)
-            course_labels = course_top[course_col].tolist()
-            course_fig.update_yaxes(
-                categoryorder="array",
-                categoryarray=course_labels,
-                ticklabelposition="outside",
-            )
-            course_fig.update_xaxes(title="Mean GPA")
-            course_fig.update_yaxes(title="")
-            course_fig.update_yaxes(automargin=True)
-            figs["mean_gpa_by_course"] = _apply_dash1_layout(
-                course_fig, f"Mean GPA by Course ({course_title_suffix})", height=440, subtitle="Bars show mean GPA by course; hover for cohort size."
-            )
-            figs["mean_gpa_by_course"].update_layout(
-                margin=dict(l=_course_label_margin(course_labels), r=28, t=74, b=64)
-            )
-        else:
-            figs["mean_gpa_by_course"] = _apply_dash1_layout(
-                go.Figure(), "Mean GPA by Course (Unavailable)", height=440, subtitle="Bars show mean GPA by course; hover for cohort size."
-            )
-    else:
-        figs["mean_gpa_by_course"] = _apply_dash1_layout(
-            go.Figure(), "Mean GPA by Course (Unavailable)", height=440, subtitle="Bars show mean GPA by course; hover for cohort size."
-        )
-
-    # --- Course outcome matrix (mean GPA vs risk rate) ---
-    if course_col in snapshot_df.columns and GPA_COL in snapshot_df.columns:
-        course_df = snapshot_df.copy()
-        course_df[GPA_COL] = pd.to_numeric(course_df[GPA_COL], errors="coerce")
-        course_df = course_df[course_df[GPA_COL].notna()].copy()
-        if not course_df.empty:
-            stats = (
-                course_df.groupby(course_col, observed=False)
-                .agg(
-                    **{
-                        "Mean GPA": (GPA_COL, "mean"),
-                        "Students": (STUDENT_ID_COL, "nunique"),
-                    }
-                )
-                .reset_index()
-            )
-            if risk_series is not None:
-                course_df = course_df.assign(_risk=risk_series)
-                risk_rate = (
-                    course_df.assign(_risk_high=course_df["_risk"].eq("High"))
-                    .groupby(course_col, observed=False)["_risk_high"]
-                    .mean()
-                    .mul(100.0)
-                )
-                stats = stats.merge(
-                    risk_rate.rename("Risk Rate"),
-                    left_on=course_col,
-                    right_index=True,
-                    how="left",
-                )
-            else:
-                stats["Risk Rate"] = np.nan
-
-            if COURSE_LEVEL_COL in course_df.columns:
-                level_mode = (
-                    course_df.groupby(course_col, observed=False)[COURSE_LEVEL_COL]
-                    .agg(lambda s: s.mode().iat[0] if not s.mode().empty else "Other")
-                    .rename(COURSE_LEVEL_COL)
-                )
-                stats = stats.merge(
-                    level_mode,
-                    left_on=course_col,
-                    right_index=True,
-                    how="left",
-                )
-
-            filtered = stats[stats["Students"] >= MIN_COURSE_COUNT].copy()
-            if filtered.empty:
-                filtered = stats.copy()
-
-            if len(filtered) > safe_top_n:
-                filtered = (
-                    filtered.sort_values("Students", ascending=False)
-                    .head(safe_top_n)
-                    .reset_index(drop=True)
-                )
-
-            if filtered["Risk Rate"].notna().any():
-                color_arg = COURSE_LEVEL_COL if COURSE_LEVEL_COL in filtered.columns else None
-                bubble_fig = px.scatter(
-                    filtered,
-                    x="Mean GPA",
-                    y="Risk Rate",
-                    size="Students",
-                    color=color_arg,
-                    hover_name=course_col,
-                    custom_data=["Students"],
-                    size_max=60,
-                )
-                bubble_fig.update_traces(
-                    marker=dict(opacity=0.78, line=dict(width=0.5, color="rgba(255,255,255,0.35)")),
-                    hovertemplate=(
-                        "Course=%{hovertext}<br>Mean GPA=%{x:.3g}<br>High Risk=%{y:.2f}%"
-                        "<br>Students=%{customdata[0]}<extra></extra>"
-                    ),
-                )
-                bubble_fig.update_xaxes(title="Mean GPA")
-                bubble_fig.update_yaxes(title="High Risk %")
-
-                try:
-                    gpa_thr = float(gpa_threshold) if gpa_threshold is not None else None
-                except (TypeError, ValueError):
-                    gpa_thr = None
-                if gpa_thr is not None and np.isfinite(gpa_thr):
-                    bubble_fig.add_vline(x=float(gpa_thr), line_dash="dash", line_color="rgba(239,68,68,0.6)")
-                if filtered["Risk Rate"].notna().any():
-                    rr_med = float(filtered["Risk Rate"].median())
-                    bubble_fig.add_hline(y=rr_med, line_dash="dot", line_color="rgba(148,163,184,0.6)")
-
-                figs["course_matrix"] = _apply_dash1_layout(
-                    bubble_fig,
-                    f"Course Outcome Matrix ({course_title_suffix})",
-                    height=460,
-                    subtitle="Bubble size shows cohort size; top-right indicates strongest outcomes; top-left signals intervention candidates.",
-                )
-            else:
-                figs["course_matrix"] = _apply_dash1_layout(
-                    go.Figure(),
-                    "Course Outcome Matrix (Unavailable)",
-                    height=460,
-                    subtitle="Bubble size shows cohort size; top-right indicates strongest outcomes; top-left signals intervention candidates.",
-                )
-        else:
-            figs["course_matrix"] = _apply_dash1_layout(
-                go.Figure(),
-                "Course Outcome Matrix (Unavailable)",
-                height=460,
-                subtitle="Bubble size shows cohort size; top-right indicates strongest outcomes; top-left signals intervention candidates.",
-            )
-    else:
-        figs["course_matrix"] = _apply_dash1_layout(
-            go.Figure(),
-            "Course Outcome Matrix (Unavailable)",
-            height=460,
-            subtitle="Bubble size shows cohort size; top-right indicates strongest outcomes; top-left signals intervention candidates.",
-        )
-
-    if COURSE_FUNDING_COL in snapshot_df.columns and GPA_COL in snapshot_df.columns:
-        funding_df = snapshot_df[[COURSE_FUNDING_COL, GPA_COL]].copy()
-        funding_df[COURSE_FUNDING_COL] = funding_df[COURSE_FUNDING_COL].astype("string").str.strip()
-        funding_df[GPA_COL] = pd.to_numeric(funding_df[GPA_COL], errors="coerce")
-        funding_df = funding_df[
-            funding_df[COURSE_FUNDING_COL].notna()
-            & funding_df[GPA_COL].notna()
-            & (funding_df[COURSE_FUNDING_COL].str.len() > 0)
-        ].copy()
-        if not funding_df.empty:
-            funding_counts = funding_df[COURSE_FUNDING_COL].value_counts()
-            funding_df["_count"] = funding_df[COURSE_FUNDING_COL].map(funding_counts)
-            order = (
-                funding_df.groupby(COURSE_FUNDING_COL, observed=False)[GPA_COL]
-                .median()
-                .sort_values()
-                .index.tolist()
-            )
-            funding_fig = px.violin(
-                funding_df,
-                x=GPA_COL,
-                y=COURSE_FUNDING_COL,
-                color=COURSE_FUNDING_COL,
-                category_orders={COURSE_FUNDING_COL: order},
-                points="outliers",
-                box=True,
-            )
-            funding_fig.update_traces(
-                meanline_visible=True,
-                customdata=funding_df[["_count"]].to_numpy(),
-                hovertemplate=(
-                    "Funding=%{y}<br>GPA=%{x:.2f}"
-                    "<br>Students=%{customdata[0]}<extra></extra>"
-                ),
-            )
-            funding_fig.update_layout(showlegend=False)
-            funding_fig.update_xaxes(title="GPA")
-            funding_fig.update_yaxes(title="Course Funding", automargin=True)
-            figs["funding_gpa"] = _apply_dash1_layout(
-                funding_fig,
-                "GPA Distribution by Funding Type",
-                height=440,
-                subtitle="Violin shows GPA spread by funding type. GPA/attendance range and funding filters not applied.",
-            )
-            figs["funding_gpa"].update_layout(
-                margin=dict(l=_course_label_margin(order), r=28, t=140, b=64)
-            )
-        else:
-            figs["funding_gpa"] = _apply_dash1_layout(
-                go.Figure(),
-                "GPA Distribution by Funding Type (Unavailable)",
-                height=440,
-                subtitle="Violin shows GPA spread by funding type. GPA/attendance range and funding filters not applied.",
-            )
-            figs["funding_gpa"].update_layout(margin=dict(t=140), title=dict(y=0.94))
-    else:
-        figs["funding_gpa"] = _apply_dash1_layout(
-            go.Figure(),
-            "GPA Distribution by Funding Type (Unavailable)",
-            height=440,
-            subtitle="Violin shows GPA spread by funding type. GPA/attendance range and funding filters not applied.",
-        )
-        figs["funding_gpa"].update_layout(margin=dict(t=140), title=dict(y=0.94))
-
-    if COURSE_LEVEL_COL in snapshot_df.columns and GPA_COL in snapshot_df.columns:
-        level_df = snapshot_df.copy()
-        level_df = level_df[level_df[COURSE_LEVEL_COL].notna()]
-        if not level_df.empty:
-            risk_rate = None
-            if RISK_SCORE_COL in level_df.columns:
-                risk_series = pd.to_numeric(level_df[RISK_SCORE_COL], errors="coerce")
-                level_df = level_df.assign(_risk=risk_series.ge(0.7))
-                risk_rate = level_df.groupby(COURSE_LEVEL_COL, observed=False)["_risk"].mean() * 100.0
-            elif RISK_FLAG_COL in level_df.columns:
-                risk_series = pd.to_numeric(level_df[RISK_FLAG_COL], errors="coerce")
-                level_df = level_df.assign(_risk=risk_series.eq(1))
-                risk_rate = level_df.groupby(COURSE_LEVEL_COL, observed=False)["_risk"].mean() * 100.0
-
-            level_stats = (
-                level_df.groupby(COURSE_LEVEL_COL, observed=False)
-                .agg(**{"Mean GPA": (GPA_COL, "mean"), "Students": (STUDENT_ID_COL, "nunique")})
-                .reset_index()
-            )
-            if risk_rate is not None:
-                level_stats = level_stats.merge(
-                    risk_rate.rename("Risk Rate"),
-                    left_on=COURSE_LEVEL_COL,
-                    right_index=True,
-                    how="left",
-                )
-            level_stats = level_stats.sort_values("Mean GPA", ascending=False)
-            level_order = level_stats[COURSE_LEVEL_COL].tolist()
-
-            level_fig = go.Figure()
-            level_fig.add_trace(
-                go.Bar(
-                    x=level_stats[COURSE_LEVEL_COL],
-                    y=level_stats["Mean GPA"],
-                    name="Mean GPA",
-                    marker_color=DASH1_COLORWAY[2],
-                    text=[f"{val:.3g}" for val in level_stats["Mean GPA"]],
-                    textposition="outside",
-                    textfont=dict(color=DASH1_TEXT, size=11),
-                    customdata=level_stats[["Students"]].to_numpy(),
-                    hovertemplate="Level=%{x}<br>Mean GPA=%{y:.3g}<br>Students=%{customdata[0]}<extra></extra>",
-                )
-            )
-            if "Risk Rate" in level_stats.columns:
-                level_fig.add_trace(
-                    go.Scatter(
-                        x=level_stats[COURSE_LEVEL_COL],
-                        y=level_stats["Risk Rate"],
-                        name="High Risk %",
-                        mode="lines+markers+text",
-                        text=[f"{val:.3g}%" for val in level_stats["Risk Rate"]],
-                        textposition="top center",
-                        textfont=dict(color="#F8FAFC", size=10),
-                        yaxis="y2",
-                        line=dict(color=DASH1_COLORWAY[1], width=2),
-                        marker=dict(size=7, color=DASH1_COLORWAY[1]),
-                        hovertemplate="Level=%{x}<br>High Risk=%{y:.3g}%<extra></extra>",
-                    )
-                )
-            level_fig.update_layout(
-                legend_title_text="Metric",
-                yaxis=dict(title="Mean GPA", range=[0, 4]),
-                yaxis2=dict(title="High Risk %", range=[0, 100], overlaying="y", side="right"),
-                showlegend=True,
-            )
-            level_fig.update_xaxes(title="Course Level", categoryorder="array", categoryarray=level_order)
-            figs["level_performance"] = _apply_dash1_layout(
-                level_fig, "Course Level Outcomes", height=440, subtitle="Use to prioritise programmes with lower GPA and higher risk. GPA/attendance range and course filters not applied."
-            )
-        else:
-            figs["level_performance"] = _apply_dash1_layout(
-                go.Figure(), "Course Level Outcomes (Unavailable)", height=440, subtitle="Use to prioritise programmes with lower GPA and higher risk. GPA/attendance range and course filters not applied."
-            )
-    else:
-        figs["level_performance"] = _apply_dash1_layout(
-            go.Figure(), "Course Level Outcomes (Unavailable)", height=440, subtitle="Use to prioritise programmes with lower GPA and higher risk. GPA/attendance range and course filters not applied."
-        )
-
-    if GPA_COL in df.columns and "Period (Unified)" in df.columns:
-        period_df = df.copy()
-        period_series = period_df["Period (Unified)"].astype("string")
-        period_mask = period_series.notna() & ~period_series.str.strip().str.lower().isin(["n.a.", "na"])
-        period_df = period_df[period_mask]
-        if STUDENT_ID_COL in period_df.columns:
-            period_df = period_df.drop_duplicates([STUDENT_ID_COL, "Period (Unified)"], keep="last")
-        period_gpa = (
-            period_df.groupby("Period (Unified)", observed=False)[GPA_COL]
-            .mean()
-            .reset_index(name="Mean GPA")
-        )
-        if not period_gpa.empty:
-            period_order = _sort_periods(period_gpa["Period (Unified)"].tolist())
-            period_gpa["Period (Unified)"] = pd.Categorical(
-                period_gpa["Period (Unified)"], categories=period_order, ordered=True
-            )
-            period_gpa = period_gpa.sort_values("Period (Unified)")
-
-            period_fig = go.Figure()
-            period_fig.add_trace(
-                go.Scatter(
-                    x=period_gpa["Period (Unified)"],
-                    y=period_gpa["Mean GPA"],
-                    mode="lines+markers+text",
-                    text=[f"{val:.3g}" for val in period_gpa["Mean GPA"]],
-                    textposition="top center",
-                    textfont=dict(color=DASH1_TEXT, size=10),
-                    line=dict(color=DASH1_COLORWAY[3], width=3),
-                    marker=dict(size=7, color=DASH1_COLORWAY[3]),
-                    hovertemplate="Period=%{x}<br>Mean GPA=%{y:.3g}<extra></extra>",
-                )
-            )
-            period_fig.update_xaxes(title="Period")
-            period_fig.update_yaxes(title="Mean GPA", range=[0, 4])
-            period_fig.update_layout(showlegend=False)
-            if len(period_gpa) >= 2:
-                diffs = period_gpa["Mean GPA"].diff()
-                diffs = diffs.dropna()
-                if not diffs.empty:
-                    idx = diffs.abs().idxmax()
-                    delta_gpa = diffs.loc[idx]
-                    period_fig.add_annotation(
-                        x=period_gpa.loc[idx, "Period (Unified)"],
-                        y=period_gpa.loc[idx, "Mean GPA"],
-                        text=f"{delta_gpa:+.3g} vs prior term",
-                        showarrow=True,
-                        arrowhead=2,
-                        arrowsize=1,
-                        arrowwidth=1,
-                        ax=0,
-                        ay=-30,
-                        font=dict(size=11, color="#E2E8F0"),
-        bgcolor="rgba(8,12,22,0.6)",
-        bordercolor="rgba(148,163,184,0.3)",
-        borderwidth=1,
-        borderpad=4,
-                    )
-            figs["gpa_by_period"] = _apply_dash1_layout(
-                period_fig, "GPA Trend by Term", height=340, subtitle="Line tracks average GPA by period."
-            )
-        else:
-            figs["gpa_by_period"] = _apply_dash1_layout(
-                go.Figure(), "GPA Trend by Term (Unavailable)", height=340, subtitle="Line tracks average GPA by period."
-            )
-    else:
-        figs["gpa_by_period"] = _apply_dash1_layout(
-            go.Figure(), "GPA Trend by Term (Unavailable)", height=340, subtitle="Line tracks average GPA by period."
-        )
-
-    if "Period (Unified)" in df.columns:
-        cohort_df = df.copy()
-        if STUDENT_ID_COL in cohort_df.columns:
-            cohort_df = cohort_df.drop_duplicates([STUDENT_ID_COL, "Period (Unified)"], keep="last")
-        period_series = cohort_df["Period (Unified)"].astype("string")
-        period_series = period_series[period_series.notna()]
-        period_series = period_series[~period_series.str.strip().str.lower().isin(["n.a.", "na"])]
-        period_counts = period_series.value_counts()
-        if not period_counts.empty:
-            period_order = _sort_periods(period_counts.index.tolist())
-            period_counts = period_counts.reindex(period_order)
-            trend_fig = go.Figure()
-            trend_fig.add_trace(
-                go.Scatter(
-                    x=period_counts.index.tolist(),
-                    y=period_counts.values.tolist(),
-                    mode="lines+markers+text",
-                    text=period_counts.values.tolist(),
-                    textposition="top center",
-                    textfont=dict(color=DASH1_TEXT, size=10),
-                    fill="tozeroy",
-                    fillcolor="rgba(0,194,168,0.18)",
-                    line=dict(color=DASH1_COLORWAY[2], width=3),
-                    marker=dict(size=7, color=DASH1_COLORWAY[2]),
-                    hovertemplate="Period=%{x}<br>Students=%{y}<extra></extra>",
-                )
-            )
-            trend_fig.update_xaxes(title="Period")
-            trend_fig.update_yaxes(title="Students")
-            trend_fig.update_layout(showlegend=False)
-            figs["cohort_trend"] = _apply_dash1_layout(
-                trend_fig, "Cohort Size by Term", height=340, subtitle="Area shows unique students per period."
-            )
-        else:
-            figs["cohort_trend"] = _apply_dash1_layout(
-                go.Figure(), "Cohort Size by Term (Unavailable)", height=340, subtitle="Area shows unique students per period."
-            )
-    else:
-        figs["cohort_trend"] = _apply_dash1_layout(
-            go.Figure(), "Cohort Size by Term (Unavailable)", height=340, subtitle="Area shows unique students per period."
-        )
-
-    if "Completion Status" in snapshot_df.columns:
-        status_series = snapshot_df["Completion Status"].fillna("N.A.").astype("string")
-        status_counts = status_series.value_counts().rename_axis("Completion Status").reset_index(name="Count")
-        status_fig = px.pie(
-            status_counts,
-            names="Completion Status",
-            values="Count",
-            hole=0.62,
-            color="Completion Status",
-            color_discrete_sequence=DASH1_COLORWAY,
-        )
-        status_fig.update_traces(
-            textinfo="percent+label",
-            textposition="inside",
-            textfont=dict(color="#F8FAFC", size=12),
-            hovertemplate="Status=%{label}<br>Count=%{value}<br>Share=%{percent}<extra></extra>",
-        )
-        total_students = int(status_counts["Count"].sum())
-        pull = [0.04 if label == "Ongoing" else 0 for label in status_counts["Completion Status"].tolist()]
-        status_fig.update_traces(pull=pull)
-        status_fig.add_annotation(
-            text=f"{total_students}<br>students",
-            x=0.5,
-            y=0.5,
-            showarrow=False,
-            font=dict(size=14, color=DASH1_TEXT),
-        )
-        status_fig.update_layout(showlegend=False)
-        figs["completion_mix"] = _apply_dash1_layout(
-            status_fig, "Completion Status Mix", height=320, subtitle="Donut shows overall completion distribution."
-        )
-    else:
-        figs["completion_mix"] = _apply_dash1_layout(
-            go.Figure(), "Completion Status Mix (Unavailable)", height=320, subtitle="Donut shows overall completion distribution."
-        )
-
-    return figs
-
-
-
-def make_dashboard_2_figures(df: pd.DataFrame) -> Dict[str, go.Figure]:
-    """Create Dashboard 2 figures (Perceptions & Study Behaviour).
-
-    Charts:
-    - Perception score by risk tier (box)
-    - Perception construct + study gap by risk tier (ranked)
-
-    Args:
-        df: Filtered analytics DataFrame.
-
-    Returns:
-        Dict of figures keyed by name.
-    """
-    figs: Dict[str, go.Figure] = {}
-    snapshot_df = _latest_semester_snapshot(df).copy()
-    course_col = COURSE_DISPLAY_COL if COURSE_DISPLAY_COL in snapshot_df.columns else DERIVED_COURSE_COL
-
-    likert_available = [c for c in LIKERT_COLS if c in snapshot_df.columns]
-
-    if PERCEPTION_SCORE_COL not in snapshot_df.columns and likert_available:
-        snapshot_df[PERCEPTION_SCORE_COL] = snapshot_df[likert_available].mean(axis=1, skipna=True)
-
-    risk_series = None
-    if RISK_TIER_COL in snapshot_df.columns:
-        risk_series = snapshot_df[RISK_TIER_COL].astype("string")
-    elif RISK_FLAG_COL in snapshot_df.columns:
-        risk_series = snapshot_df[RISK_FLAG_COL].map({1: "High", 0: "Low"}).astype("string")
-    if risk_series is not None:
-        risk_series = risk_series.str.title()
-
-    risk_color_map = {"High": "#EF4444", "Medium": "#F4B400", "Low": "#22C55E"}
-
-
-    if PERCEPTION_SCORE_COL in snapshot_df.columns and risk_series is not None:
-        perc_vals = pd.to_numeric(snapshot_df[PERCEPTION_SCORE_COL], errors="coerce")
-        mask = perc_vals.notna() & risk_series.notna()
-        if mask.any():
-            plot_df = snapshot_df.loc[mask, [PERCEPTION_SCORE_COL]].copy()
-            plot_df["Risk Tier"] = risk_series[mask]
-            plot_df = plot_df[plot_df["Risk Tier"].isin(["High", "Medium", "Low"])].copy()
-            if not plot_df.empty:
-                order = ["High", "Medium", "Low"]
-                fig = go.Figure()
-                for idx, tier in enumerate(order):
-                    vals = plot_df.loc[plot_df["Risk Tier"] == tier, PERCEPTION_SCORE_COL]
-                    if vals.empty:
-                        continue
-                    fig.add_trace(
-                        go.Box(
-                            y=vals,
-                            name=str(tier),
-                            boxmean=True,
-                            marker_color=risk_color_map.get(tier, DASH1_COLORWAY[idx % len(DASH1_COLORWAY)]),
-                            hovertemplate="Risk Tier=%{x}<br>Perception=%{y:.3g}<extra></extra>",
-                        )
-                    )
-                fig.update_xaxes(title="Risk Tier")
-                fig.update_yaxes(title="Perception Score")
-                figs["perception_by_gpa_band"] = _apply_dash1_layout(
-                    fig,
-                    "Perception Score by Risk Tier",
-                    height=440,
-                    subtitle="Compares perception scores between high- and low-risk students.",
-                )
-            else:
-                figs["perception_by_gpa_band"] = _apply_dash1_layout(
-                    go.Figure(),
-                    "Perception Score by Risk Tier (Unavailable)",
-                    height=380,
-                    subtitle="Compares perception scores between high- and low-risk students.",
-                )
-        else:
-            figs["perception_by_gpa_band"] = _apply_dash1_layout(
-                go.Figure(),
-                "Perception Score by Risk Tier (Unavailable)",
-                height=380,
-                subtitle="Compares perception scores between high- and low-risk students.",
-            )
-    else:
-        figs["perception_by_gpa_band"] = _apply_dash1_layout(
-            go.Figure(),
-            "Perception Score by Risk Tier (Unavailable)",
-            height=380,
-            subtitle="Compares perception scores between high- and low-risk students.",
-        )
-
-    if SELF_STUDY_COL in snapshot_df.columns and risk_series is not None:
-        study_vals = pd.to_numeric(snapshot_df[SELF_STUDY_COL], errors="coerce")
-        mask = study_vals.notna() & risk_series.notna()
-        if mask.any():
-            plot_df = snapshot_df.loc[mask, [SELF_STUDY_COL]].copy()
-            plot_df["Risk Tier"] = risk_series[mask]
-            plot_df = plot_df[plot_df["Risk Tier"].isin(["High", "Medium", "Low"])].copy()
-            if not plot_df.empty:
-                order = ["High", "Medium", "Low"]
-                fig = go.Figure()
-                for idx, tier in enumerate(order):
-                    vals = plot_df.loc[plot_df["Risk Tier"] == tier, SELF_STUDY_COL]
-                    if vals.empty:
-                        continue
-                    fig.add_trace(
-                        go.Violin(
-                            y=vals,
-                            name=str(tier),
-                            box=dict(visible=True),
-                            meanline=dict(visible=True),
-                            line_color=risk_color_map.get(tier, DASH1_COLORWAY[idx % len(DASH1_COLORWAY)]),
-                            fillcolor=risk_color_map.get(tier, DASH1_COLORWAY[idx % len(DASH1_COLORWAY)]),
-                            opacity=0.65,
-                            hovertemplate="Risk Tier=%{x}<br>Study Hours=%{y:.3g}<extra></extra>",
-                        )
-                    )
-                fig.update_xaxes(title="Risk Tier")
-                fig.update_yaxes(title="Self-Study Hours")
-                figs["study_hours_vs_gpa"] = _apply_dash1_layout(
-                    fig,
-                    "Study Hours by Risk Tier",
-                    height=440,
-                    subtitle="Shows how study time differs between high-, medium-, and low-risk students.",
-                )
-            else:
-                figs["study_hours_vs_gpa"] = _apply_dash1_layout(
-                    go.Figure(),
-                    "Study Hours by Risk Tier (Unavailable)",
-                    height=380,
-                    subtitle="Shows how study time differs between high-, medium-, and low-risk students.",
-                )
-        else:
-            figs["study_hours_vs_gpa"] = _apply_dash1_layout(
-                go.Figure(),
-                "Study Hours by Risk Tier (Unavailable)",
-                height=380,
-                subtitle="Shows how study time differs between high-, medium-, and low-risk students.",
-            )
-    else:
-        figs["study_hours_vs_gpa"] = _apply_dash1_layout(
-            go.Figure(),
-            "Study Hours by Risk Tier (Unavailable)",
-            height=380,
-            subtitle="Shows how study time differs between high-, medium-, and low-risk students.",
-        )
-
-    # --- Perception radar (Likert profile) ---
-    if likert_available and risk_series is not None:
-        radar_df = snapshot_df.copy()
-        radar_df["Risk Tier"] = risk_series
-        categories = [PERCEPTION_LABEL_MAP.get(c, c) for c in likert_available]
-        order = ["High", "Medium", "Low"]
-        radar_fig = go.Figure()
-        for tier in order:
-            tier_vals = (
-                radar_df.loc[radar_df["Risk Tier"] == tier, likert_available]
-                .apply(pd.to_numeric, errors="coerce")
-            )
-            if tier_vals.notna().any().any():
-                means = tier_vals.mean().values
-                radar_fig.add_trace(
-                    go.Scatterpolar(
-                        r=means,
-                        theta=categories,
-                        fill="toself",
-                        name=str(tier),
-                        line_color=risk_color_map.get(tier, DASH1_COLORWAY[0]),
-                        opacity=0.6,
-                        hovertemplate="%{theta}<br>Mean=%{r:.2f}<extra></extra>",
-                    )
-                )
-        radar_fig.update_layout(
-            polar=dict(
-                radialaxis=dict(range=[1, 5], tickfont=dict(color=DASH1_TEXT), gridcolor=DASH1_GRID)
-            ),
-            showlegend=True,
-        )
-        figs["perception_radar"] = _apply_dash1_layout(
-            radar_fig,
-            "Perception Radar by Risk Tier",
-            height=420,
-            subtitle="Profiles show average Likert scores across risk tiers.",
-        )
-    else:
-        figs["perception_radar"] = _apply_dash1_layout(
-            go.Figure(),
-            "Perception Radar by Risk Tier (Unavailable)",
-            height=420,
-            subtitle="Profiles show average Likert scores across risk tiers.",
-        )
-
-    # --- Perception vs GPA scatter ---
-    if PERCEPTION_SCORE_COL in snapshot_df.columns and GPA_COL in snapshot_df.columns:
-        plot_df = snapshot_df[[PERCEPTION_SCORE_COL, GPA_COL]].copy()
-        plot_df[PERCEPTION_SCORE_COL] = pd.to_numeric(plot_df[PERCEPTION_SCORE_COL], errors="coerce")
-        plot_df[GPA_COL] = pd.to_numeric(plot_df[GPA_COL], errors="coerce")
-        plot_df = plot_df[plot_df[PERCEPTION_SCORE_COL].notna() & plot_df[GPA_COL].notna()].copy()
-        if not plot_df.empty:
-            if risk_series is not None:
-                plot_df["Risk Tier"] = risk_series.loc[plot_df.index]
-            size_col = None
-            if SELF_STUDY_COL in snapshot_df.columns:
-                plot_df[SELF_STUDY_COL] = pd.to_numeric(snapshot_df.loc[plot_df.index, SELF_STUDY_COL], errors="coerce")
-                size_col = SELF_STUDY_COL
-
-            scatter = px.scatter(
-                plot_df,
-                x=PERCEPTION_SCORE_COL,
-                y=GPA_COL,
-                color="Risk Tier" if risk_series is not None else None,
-                size=size_col,
-                size_max=18,
-                opacity=0.75,
-                labels={PERCEPTION_SCORE_COL: "Perception Score", GPA_COL: "GPA"},
-                color_discrete_map=risk_color_map,
-            )
-            scatter.update_traces(
-                marker=dict(line=dict(width=0.5, color="rgba(255,255,255,0.35)")),
-                hovertemplate="Perception=%{x:.2f}<br>GPA=%{y:.2f}<extra></extra>",
-            )
-            vals_x = plot_df[PERCEPTION_SCORE_COL]
-            vals_y = plot_df[GPA_COL]
-            if len(plot_df) >= 3 and vals_x.nunique() > 1:
-                slope, intercept = np.polyfit(vals_x, vals_y, 1)
-                corr = float(np.corrcoef(vals_x, vals_y)[0, 1])
-                x_line = np.array([vals_x.min(), vals_x.max()])
-                y_line = slope * x_line + intercept
-                scatter.add_trace(
-                    go.Scatter(
-                        x=x_line,
-                        y=y_line,
-                        mode="lines",
-                        name=f"Trend (r={corr:.2f})",
-                        line=dict(color="#F4B400", width=2),
-                        hovertemplate=f"Trend line<br>r={corr:.2f}<extra></extra>",
-                    )
-                )
-            figs["perception_vs_gpa"] = _apply_dash1_layout(
-                scatter,
-                "Perception vs GPA",
-                height=420,
-                subtitle="Higher perception scores should align with stronger GPA outcomes.",
-            )
-        else:
-            figs["perception_vs_gpa"] = _apply_dash1_layout(
-                go.Figure(),
-                "Perception vs GPA (Unavailable)",
-                height=420,
-                subtitle="Higher perception scores should align with stronger GPA outcomes.",
-            )
-    else:
-        figs["perception_vs_gpa"] = _apply_dash1_layout(
-            go.Figure(),
-            "Perception vs GPA (Unavailable)",
-            height=420,
-            subtitle="Higher perception scores should align with stronger GPA outcomes.",
-        )
-
-    # --- Construct gaps by risk tier (High vs Low) ---
-    gap_cols = list(likert_available)
-    if SELF_STUDY_COL in snapshot_df.columns:
-        gap_cols.append(SELF_STUDY_COL)
-    if gap_cols and risk_series is not None:
-        risk_df = snapshot_df.copy()
-        risk_df["_risk_group"] = risk_series
-        risk_df = risk_df[risk_df["_risk_group"].isin(["High", "Low"])].copy()
-        rows = []
-        for col in gap_cols:
-            vals = pd.to_numeric(risk_df[col], errors="coerce")
-            hi = vals[risk_df["_risk_group"] == "High"].dropna()
-            lo = vals[risk_df["_risk_group"] == "Low"].dropna()
-            if len(hi) < MIN_CORR_PAIRS or len(lo) < MIN_CORR_PAIRS:
-                continue
-            gap = float(lo.mean() - hi.mean())
-            rows.append(
-                {
-                    "Factor": PERCEPTION_LABEL_MAP.get(col, col),
-                    "Gap": gap,
-                    "Low Mean": float(lo.mean()),
-                    "High Mean": float(hi.mean()),
-                    "N Low": int(len(lo)),
-                    "N High": int(len(hi)),
-                }
-            )
-
-        gap_df = pd.DataFrame(rows)
-        if not gap_df.empty:
-            gap_df["Abs Gap"] = gap_df["Gap"].abs()
-            gap_df = gap_df.sort_values("Abs Gap", ascending=False)
-            gap_df["Color"] = np.where(gap_df["Gap"] >= 0, "#38BDF8", "#EF4444")
-
-            gap_fig = go.Figure(
-                data=[
-                    go.Bar(
-                        x=gap_df["Gap"],
-                        y=gap_df["Factor"],
-                        orientation="h",
-                        marker_color=gap_df["Color"],
-                        text=[f"{v:+.2f}" for v in gap_df["Gap"]],
-                        textposition="outside",
-                        textfont=dict(color=DASH1_TEXT, size=11),
-                        customdata=gap_df[["Low Mean", "High Mean", "N Low", "N High"]].to_numpy(),
-                        hovertemplate=(
-                            "Factor=%{y}<br>Gap (Low-High)=%{x:.2f}"
-                            "<br>Low Mean=%{customdata[0]:.2f} (N=%{customdata[2]})"
-                            "<br>High Mean=%{customdata[1]:.2f} (N=%{customdata[3]})<extra></extra>"
-                        ),
-                    )
-                ]
-            )
-            gap_fig.add_vline(x=0, line_width=1, line_dash="dot", line_color="rgba(148,163,184,0.6)")
-            gap_fig.update_xaxes(title="Mean score gap (Low - High risk)")
-            gap_fig.update_yaxes(title="", automargin=True, categoryorder="array", categoryarray=gap_df["Factor"].tolist(), autorange="reversed")
-            figs["construct_corr"] = _apply_dash1_layout(
-                gap_fig,
-                "Perception Construct Gaps by Risk Tier",
-                height=440,
-                subtitle="Positive values indicate higher scores among low-risk students (includes self-study hours).",
-            )
-        else:
-            figs["construct_corr"] = _apply_dash1_layout(
-                go.Figure(),
-                "Perception Construct Gaps by Risk Tier (Unavailable)",
-                height=440,
-                subtitle="Positive values indicate higher scores among low-risk students (includes self-study hours).",
-            )
-    else:
-        figs["construct_corr"] = _apply_dash1_layout(
-            go.Figure(),
-            "Perception Construct Gaps by Risk Tier (Unavailable)",
-            height=440,
-            subtitle="Positive values indicate higher scores among low-risk students (includes self-study hours).",
-        )
-
-    # --- Perception driver strength (corr with GPA) ---
-    driver_cols = []
-    for c in [PERCEPTION_SCORE_COL, SELF_STUDY_COL] + likert_available:
-        if c in snapshot_df.columns and c not in driver_cols:
-            driver_cols.append(c)
-    if GPA_COL in snapshot_df.columns and driver_cols:
-        rows = []
-        for col in driver_cols:
-            vals = snapshot_df[[col, GPA_COL]].apply(pd.to_numeric, errors="coerce")
-            mask = vals[col].notna() & vals[GPA_COL].notna()
-            if mask.sum() < MIN_CORR_PAIRS:
-                continue
-            corr_val = float(np.corrcoef(vals.loc[mask, col], vals.loc[mask, GPA_COL])[0, 1])
-            risk_corr = np.nan
-            if RISK_SCORE_COL in snapshot_df.columns:
-                risk_vals = pd.to_numeric(snapshot_df[RISK_SCORE_COL], errors="coerce")
-                mask2 = vals[col].notna() & risk_vals.notna()
-                if mask2.sum() >= MIN_CORR_PAIRS:
-                    risk_corr = float(np.corrcoef(vals.loc[mask2, col], risk_vals.loc[mask2])[0, 1])
-            rows.append(
-                {
-                    "Factor": PERCEPTION_LABEL_MAP.get(col, col),
-                    "Corr": corr_val,
-                    "Risk Corr": risk_corr,
-                    "N": int(mask.sum()),
-                }
-            )
-        driver_df = pd.DataFrame(rows)
-        if not driver_df.empty:
-            driver_df["Abs"] = driver_df["Corr"].abs()
-            driver_df = driver_df.sort_values("Abs", ascending=False)
-            if len(driver_df) > 10:
-                driver_df = driver_df.head(10)
-            driver_df["Color"] = np.where(driver_df["Corr"] >= 0, "#38BDF8", "#EF4444")
-
-            driver_fig = go.Figure(
-                data=[
-                    go.Bar(
-                        x=driver_df["Corr"],
-                        y=driver_df["Factor"],
-                        orientation="h",
-                        marker_color=driver_df["Color"],
-                        text=[f"{v:+.2f}" for v in driver_df["Corr"]],
-                        textposition="outside",
-                        textfont=dict(color=DASH1_TEXT, size=11),
-                        customdata=driver_df[["N", "Risk Corr"]].to_numpy(),
-                        hovertemplate=(
-                            "Factor=%{y}<br>Corr with GPA=%{x:.2f}"
-                            "<br>N=%{customdata[0]}<br>Corr with Risk=%{customdata[1]:.2f}<extra></extra>"
-                        ),
-                    )
-                ]
-            )
-            driver_fig.add_vline(x=0, line_dash="dot", line_color="rgba(148,163,184,0.6)")
-            driver_fig.update_xaxes(title="Correlation with GPA")
-            driver_fig.update_yaxes(title="", automargin=True, autorange="reversed")
-            figs["perception_drivers"] = _apply_dash1_layout(
-                driver_fig,
-                "Perception Driver Strength",
-                height=420,
-                subtitle="Top constructs with strongest association to GPA; hover shows risk correlation.",
-            )
-        else:
-            figs["perception_drivers"] = _apply_dash1_layout(
-                go.Figure(),
-                "Perception Driver Strength (Unavailable)",
-                height=420,
-                subtitle="Top constructs with strongest association to GPA; hover shows risk correlation.",
-            )
-    else:
-        figs["perception_drivers"] = _apply_dash1_layout(
-            go.Figure(),
-            "Perception Driver Strength (Unavailable)",
-            height=420,
-            subtitle="Top constructs with strongest association to GPA; hover shows risk correlation.",
-        )
-
-    # --- Engagement vs performance index ---
-    if ENGAGEMENT_COL in snapshot_df.columns and PERFORMANCE_INDEX_COL in snapshot_df.columns:
-        evp_df = snapshot_df[[ENGAGEMENT_COL, PERFORMANCE_INDEX_COL]].copy()
-        evp_df[ENGAGEMENT_COL] = pd.to_numeric(evp_df[ENGAGEMENT_COL], errors="coerce")
-        evp_df[PERFORMANCE_INDEX_COL] = pd.to_numeric(evp_df[PERFORMANCE_INDEX_COL], errors="coerce")
-        evp_df = evp_df[evp_df[ENGAGEMENT_COL].notna() & evp_df[PERFORMANCE_INDEX_COL].notna()].copy()
-        if not evp_df.empty:
-            if risk_series is not None:
-                evp_df["Risk Tier"] = risk_series.loc[evp_df.index]
-            evp_fig = px.scatter(
-                evp_df,
-                x=ENGAGEMENT_COL,
-                y=PERFORMANCE_INDEX_COL,
-                color="Risk Tier" if risk_series is not None else None,
-                color_discrete_map=risk_color_map,
-                opacity=0.75,
-                labels={
-                    ENGAGEMENT_COL: "Engagement Score",
-                    PERFORMANCE_INDEX_COL: "Performance Index",
-                },
-            )
-            evp_fig.update_traces(
-                marker=dict(line=dict(width=0.5, color="rgba(255,255,255,0.35)")),
-                hovertemplate="Engagement=%{x:.2f}<br>Performance=%{y:.2f}<extra></extra>",
-            )
-            evp_fig.add_vline(x=0.5, line_dash="dot", line_color="rgba(148,163,184,0.6)")
-            evp_fig.add_hline(y=0.5, line_dash="dot", line_color="rgba(148,163,184,0.6)")
-            figs["engagement_vs_perf"] = _apply_dash1_layout(
-                evp_fig,
-                "Engagement vs Performance",
-                height=420,
-                subtitle="Quadrants surface high-engagement/low-performance and low-engagement/high-performance segments.",
-            )
-        else:
-            figs["engagement_vs_perf"] = _apply_dash1_layout(
-                go.Figure(),
-                "Engagement vs Performance (Unavailable)",
-                height=420,
-                subtitle="Quadrants surface high-engagement/low-performance and low-engagement/high-performance segments.",
-            )
-    else:
-        figs["engagement_vs_perf"] = _apply_dash1_layout(
-            go.Figure(),
-            "Engagement vs Performance (Unavailable)",
-            height=420,
-            subtitle="Quadrants surface high-engagement/low-performance and low-engagement/high-performance segments.",
-        )
-
-    # --- Correlation map (perception + study + outcomes) ---
-    corr_cols = []
-    for c in (
-        PERCEPTION_SCORE_COL,
-        SELF_STUDY_COL,
-        GPA_COL,
-        ATTEND_COL,
-    ):
-        if c in snapshot_df.columns:
-            corr_cols.append(c)
-    for c in likert_available:
-        if c in snapshot_df.columns:
-            corr_cols.append(c)
-
-    corr_cols = [c for i, c in enumerate(corr_cols) if c not in corr_cols[:i]]
-    if len(corr_cols) >= 2:
-        numeric = snapshot_df[corr_cols].apply(pd.to_numeric, errors="coerce")
-        corr = numeric.corr()
-
-        corr_values = corr.values
-        corr_text = np.vectorize(lambda v: f"{v:.3g}" if np.isfinite(v) else "")(corr_values)
-        heat = go.Figure(
-            data=go.Heatmap(
-                z=corr_values,
-                text=corr_text,
-                texttemplate="%{text}",
-                textfont=dict(size=10, color=DASH1_TEXT),
-                x=corr.columns,
-                y=corr.index,
-                zmin=-1,
-                zmid=0,
-                zmax=1,
-                colorscale=[[0.0, "#EF4444"], [0.5, "#111827"], [1.0, "#38BDF8"]],
-                xgap=1,
-                ygap=1,
-                colorbar=dict(title="Corr", len=0.75, thickness=12, tickvals=[-1, -0.5, 0, 0.5, 1]),
-                hovertemplate="X=%{x}<br>Y=%{y}<br>Corr=%{z:.3g}<extra></extra>",
-            )
-        )
-        annotations = []
-        corr_no_diag = corr.copy()
-        np.fill_diagonal(corr_no_diag.values, np.nan)
-        corr_stack = corr_no_diag.stack(future_stack=True)
-        if not corr_stack.empty:
-            pos_pair = corr_stack.idxmax()
-            pos_val = float(corr_stack.max())
-            neg_pair = corr_stack.idxmin()
-            neg_val = float(corr_stack.min())
-            summary_text = (
-                f"Strongest +: {pos_pair[0]} x {pos_pair[1]} ({pos_val:.3g}) | "
-                f"Strongest -: {neg_pair[0]} x {neg_pair[1]} ({neg_val:.3g})"
-            )
-            annotations.append(
-                dict(
-                    x=0.0,
-                    y=1.14,
-                    xref="paper",
-                    yref="paper",
-                    text=f"<b>{summary_text}</b>",
-                    showarrow=False,
-                    align="left",
-                    font=dict(size=11, color="#F8FAFC"),
-                    bgcolor="rgba(2,6,23,0.88)",
-                    bordercolor="rgba(148,163,184,0.35)",
-                    borderwidth=1,
-                    borderpad=4,
-                )
-            )
-        for i, row in enumerate(corr_values):
-            for j, val in enumerate(row):
-                is_strong = abs(val) >= 0.35
-                color = "#F8FAFC" if is_strong else "#E2E8F0"
-                bg_color = "rgba(2,6,23,0.85)" if is_strong else "rgba(15,23,42,0.55)"
-                annotations.append(
-                    dict(
-                        x=corr.columns[j],
-                        y=corr.index[i],
-                        text=f"{val:.3g}",
-                        showarrow=False,
-                        font=dict(size=11, color=color),
-                        bgcolor=bg_color,
-                        bordercolor="rgba(148,163,184,0.35)",
-                        borderwidth=1,
-                        borderpad=2,
-                    )
-                )
-        heat.update_layout(showlegend=False, margin=dict(l=90, r=50, t=120, b=90), annotations=annotations)
-        heat.update_xaxes(tickangle=-30, automargin=True, tickfont=dict(size=9, color=DASH1_TEXT))
-        heat.update_yaxes(automargin=True, tickfont=dict(size=9, color=DASH1_TEXT))
-        figs["corr_heatmap"] = _apply_dash1_layout(
-            heat, "Perception & Outcome Correlation Map", height=500, subtitle="Cell values show correlation strength across variables."
-        )
-    else:
-        figs["corr_heatmap"] = _apply_dash1_layout(
-            go.Figure(), "Perception & Outcome Correlation Map (Unavailable)", height=440, subtitle="Cell values show correlation strength across variables."
-        )
-    return figs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # === Dynamic risk + targeting + premium charts ===
 FUNDING_GROUP_COL = "Funding Group"
 ATTENDANCE_BAND_COL = "Attendance Band"
@@ -2411,6 +765,7 @@ def _safe_string(series: pd.Series) -> pd.Series:
 
 
 def make_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Engineer the normalized features used by the dashboard."""
     out = df.copy()
 
     if COURSE_LEVEL_COL not in out.columns:
@@ -2494,9 +849,16 @@ def make_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_risk_3level(df: pd.DataFrame, gpa_thr: float, att_thr: float) -> pd.DataFrame:
+    """Assign each student record to a three-level risk category."""
     out = df.copy()
-    gpa_vals = pd.to_numeric(out[GPA_COL], errors="coerce") if GPA_COL in out.columns else pd.Series(np.nan, index=out.index)
-    att_vals = pd.to_numeric(out[ATTEND_COL], errors="coerce") if ATTEND_COL in out.columns else pd.Series(np.nan, index=out.index)
+    gpa_vals = (
+        pd.to_numeric(out[GPA_COL], errors="coerce") if GPA_COL in out.columns else pd.Series(np.nan, index=out.index)
+    )
+    att_vals = (
+        pd.to_numeric(out[ATTEND_COL], errors="coerce")
+        if ATTEND_COL in out.columns
+        else pd.Series(np.nan, index=out.index)
+    )
 
     low_gpa = gpa_vals < gpa_thr
     low_att = att_vals < att_thr
@@ -2526,6 +888,7 @@ def compute_risk_3level(df: pd.DataFrame, gpa_thr: float, att_thr: float) -> pd.
 
 
 def make_targeting_table(df: pd.DataFrame) -> tuple[pd.DataFrame, float]:
+    """Build the ranked intervention table and return its risk threshold."""
     if df.empty:
         empty = pd.DataFrame(
             columns=[
@@ -2578,6 +941,7 @@ def make_targeting_table(df: pd.DataFrame) -> tuple[pd.DataFrame, float]:
 
 
 def make_kpi_cards_data(df: pd.DataFrame, targeting_df: pd.DataFrame) -> dict:
+    """Calculate summary values for the dashboard KPI cards."""
     if df.empty:
         return {
             "total": 0,
@@ -2595,7 +959,11 @@ def make_kpi_cards_data(df: pd.DataFrame, targeting_df: pd.DataFrame) -> dict:
     top_segment = "N.A."
     if not targeting_df.empty:
         row = targeting_df.iloc[0]
-        top_segment = f"{row.get(COURSE_LEVEL_COL, 'N.A.')} | {row.get(FUNDING_GROUP_COL, 'N.A.')} | {row.get(ATTENDANCE_BAND_COL, 'N.A.')}"
+        top_segment = (
+            f"{row.get(COURSE_LEVEL_COL, 'N.A.')} | "
+            f"{row.get(FUNDING_GROUP_COL, 'N.A.')} | "
+            f"{row.get(ATTENDANCE_BAND_COL, 'N.A.')}"
+        )
     return {
         "total": total,
         "avg_gpa": avg_gpa,
@@ -2607,12 +975,18 @@ def make_kpi_cards_data(df: pd.DataFrame, targeting_df: pd.DataFrame) -> dict:
 
 
 def make_recommendations(targeting_df: pd.DataFrame) -> list[dict]:
+    """Create intervention recommendations from the ranked target table."""
     recs = []
     if targeting_df.empty:
         return recs
     top = targeting_df.head(3)
     for _, row in top.iterrows():
-        cohort = f"{row.get(COURSE_LEVEL_COL, 'N.A.')} | {row.get(FUNDING_GROUP_COL, 'N.A.')} | {row.get(HIGHEST_EDU_COL, 'N.A.')} | {row.get(ATTENDANCE_BAND_COL, 'N.A.')}"
+        cohort = (
+            f"{row.get(COURSE_LEVEL_COL, 'N.A.')} | "
+            f"{row.get(FUNDING_GROUP_COL, 'N.A.')} | "
+            f"{row.get(HIGHEST_EDU_COL, 'N.A.')} | "
+            f"{row.get(ATTENDANCE_BAND_COL, 'N.A.')}"
+        )
         evidence = (
             f"n={int(row.get('n_students', 0))}, "
             f"High risk={row.get('high_risk_rate', 0):.0%}, "
@@ -2620,18 +994,23 @@ def make_recommendations(targeting_df: pd.DataFrame) -> list[dict]:
             f"Avg GPA={row.get('avg_gpa', float('nan')):.2f}, "
             f"Avg attendance={row.get('avg_attendance', float('nan')):.1f}%"
         )
-        suggestion = "Attendance coaching" if row.get("low_att_rate", 0) >= row.get("low_gpa_rate", 0) else "Academic support"
+        suggestion = (
+            "Attendance coaching" if row.get("low_att_rate", 0) >= row.get("low_gpa_rate", 0) else "Academic support"
+        )
         expected = "Reduce high-risk rates by addressing the breached threshold."
-        recs.append({
-            "cohort": cohort,
-            "evidence": evidence,
-            "suggestion": suggestion,
-            "expected": expected,
-        })
+        recs.append(
+            {
+                "cohort": cohort,
+                "evidence": evidence,
+                "suggestion": suggestion,
+                "expected": expected,
+            }
+        )
     return recs
 
 
 def make_sunburst_chart(df: pd.DataFrame, value_mode: str = "count") -> go.Figure:
+    """Visualize the hierarchical composition of student risk."""
     if df.empty:
         return _dash_empty_figure("Risk Composition Map")
 
@@ -2642,14 +1021,22 @@ def make_sunburst_chart(df: pd.DataFrame, value_mode: str = "count") -> go.Figur
             data[col] = "Unknown"
         data[col] = data[col].astype("string").fillna("Unknown")
 
-    grouped = data.groupby(path_cols, dropna=False, observed=False).agg(
-        n_students=(STUDENT_ID_COL, "nunique"),
-        avg_gpa=(GPA_COL, "mean"),
-        avg_attendance=(ATTEND_COL, "mean"),
-    ).reset_index()
+    grouped = (
+        data.groupby(path_cols, dropna=False, observed=False)
+        .agg(
+            n_students=(STUDENT_ID_COL, "nunique"),
+            avg_gpa=(GPA_COL, "mean"),
+            avg_attendance=(ATTEND_COL, "mean"),
+        )
+        .reset_index()
+    )
 
     seg_cols = [COURSE_LEVEL_COL, FUNDING_GROUP_COL, HIGHEST_EDU_COL, ATTENDANCE_BAND_COL]
-    seg = data.groupby(seg_cols, dropna=False, observed=False)[RISK_DYNAMIC_COL].apply(lambda s: (s == "High").mean()).reset_index(name="high_risk_rate")
+    seg = (
+        data.groupby(seg_cols, dropna=False, observed=False)[RISK_DYNAMIC_COL]
+        .apply(lambda s: (s == "High").mean())
+        .reset_index(name="high_risk_rate")
+    )
     grouped = grouped.merge(seg, on=seg_cols, how="left")
     grouped["priority_index"] = grouped["n_students"] * grouped["high_risk_rate"]
 
@@ -2680,6 +1067,7 @@ def make_sunburst_chart(df: pd.DataFrame, value_mode: str = "count") -> go.Figur
 
 
 def make_sankey_chart(df: pd.DataFrame, value_mode: str = "count") -> go.Figure:
+    """Visualize categorical pathways into student risk."""
     if df.empty:
         return _dash_empty_figure("Driver Flow")
 
@@ -2691,10 +1079,16 @@ def make_sankey_chart(df: pd.DataFrame, value_mode: str = "count") -> go.Figure:
     if LOW_GPA_FLAG_COL in data.columns:
         data["Low GPA Outcome"] = np.where(data[LOW_GPA_FLAG_COL].fillna(False), "Low GPA", "Not Low GPA")
     else:
-        data["Low GPA Outcome"] = np.where(pd.to_numeric(data[GPA_COL], errors="coerce") < 2.5, "Low GPA", "Not Low GPA")
+        data["Low GPA Outcome"] = np.where(
+            pd.to_numeric(data[GPA_COL], errors="coerce") < 2.5, "Low GPA", "Not Low GPA"
+        )
 
     if value_mode == "impact":
-        seg = data.groupby([FUNDING_GROUP_COL, ATTENDANCE_BAND_COL], observed=False)[RISK_DYNAMIC_COL].apply(lambda s: (s == "High").mean()).reset_index(name="high_risk_rate")
+        seg = (
+            data.groupby([FUNDING_GROUP_COL, ATTENDANCE_BAND_COL], observed=False)[RISK_DYNAMIC_COL]
+            .apply(lambda s: (s == "High").mean())
+            .reset_index(name="high_risk_rate")
+        )
         seg["priority_index"] = seg["high_risk_rate"]
         data = data.merge(seg, on=[FUNDING_GROUP_COL, ATTENDANCE_BAND_COL], how="left")
         data["weight"] = data["priority_index"].fillna(0) + 1e-6
@@ -2749,6 +1143,7 @@ def make_sankey_chart(df: pd.DataFrame, value_mode: str = "count") -> go.Figure:
 
 
 def make_quadrant_scatter(df: pd.DataFrame, gpa_thr: float, att_thr: float) -> go.Figure:
+    """Plot GPA and attendance against the configured risk thresholds."""
     if df.empty:
         return _dash_empty_figure("GPA vs Attendance Quadrants")
     plot_df = df.copy()
@@ -2794,6 +1189,7 @@ def make_quadrant_scatter(df: pd.DataFrame, gpa_thr: float, att_thr: float) -> g
 
 
 def make_parcats_chart(df: pd.DataFrame) -> go.Figure:
+    """Visualize categorical journeys into each risk tier."""
     if df.empty:
         return _dash_empty_figure("Categorical Journeys Into Risk")
     dims = []
@@ -2809,7 +1205,11 @@ def make_parcats_chart(df: pd.DataFrame) -> go.Figure:
     if not dims:
         return _dash_empty_figure("Categorical Journeys Into Risk")
 
-    risk_vals = df[RISK_DYNAMIC_COL].astype("string").fillna("Unknown") if RISK_DYNAMIC_COL in df.columns else pd.Series("Unknown", index=df.index)
+    risk_vals = (
+        df[RISK_DYNAMIC_COL].astype("string").fillna("Unknown")
+        if RISK_DYNAMIC_COL in df.columns
+        else pd.Series("Unknown", index=df.index)
+    )
     color_vals = risk_vals.map({"Low": 0, "Medium": 1, "High": 2}).fillna(0)
 
     fig = go.Figure(
@@ -2830,6 +1230,7 @@ def make_parcats_chart(df: pd.DataFrame) -> go.Figure:
 
 
 def make_lift_heatmap(df: pd.DataFrame, mode: str = "funding") -> go.Figure:
+    """Plot high-risk lift across the selected student dimensions."""
     if df.empty:
         return _dash_empty_figure("High-Risk Lift Heatmap")
 
@@ -2845,7 +1246,11 @@ def make_lift_heatmap(df: pd.DataFrame, mode: str = "funding") -> go.Figure:
     if row_key not in df.columns or col_key not in df.columns:
         return _dash_empty_figure("High-Risk Lift Heatmap")
 
-    grouped = df.groupby([row_key, col_key], observed=False)[RISK_DYNAMIC_COL].apply(lambda s: (s == "High").mean()).reset_index(name="high_risk_rate")
+    grouped = (
+        df.groupby([row_key, col_key], observed=False)[RISK_DYNAMIC_COL]
+        .apply(lambda s: (s == "High").mean())
+        .reset_index(name="high_risk_rate")
+    )
     grouped["lift"] = grouped["high_risk_rate"] / overall_high
 
     pivot = grouped.pivot(index=row_key, columns=col_key, values="lift")
@@ -2869,10 +1274,12 @@ def make_lift_heatmap(df: pd.DataFrame, mode: str = "funding") -> go.Figure:
 
 
 def make_gpa_distribution(df: pd.DataFrame) -> go.Figure:
+    """Plot GPA distributions by funding and qualification."""
     if df.empty:
         return _dash_empty_figure("GPA Distribution by Funding and Qualification")
 
     from plotly.subplots import make_subplots
+
     fig = make_subplots(rows=1, cols=2, subplot_titles=("Funding Group", "Highest Qualification"))
 
     if FUNDING_GROUP_COL in df.columns:
@@ -2924,12 +1331,20 @@ def make_gpa_distribution(df: pd.DataFrame) -> go.Figure:
 
 
 def make_radar_chart(df: pd.DataFrame) -> go.Figure:
+    """Compare normalized characteristics across student risk groups."""
     if df.empty:
         return _dash_empty_figure("What Distinguishes High Risk Students")
 
     axes = []
     labels = []
-    for col in ["Prior Knowledge", "Course Relevance", "Teaching Support", "Company Support", "Family Support", SELF_STUDY_COL]:
+    for col in [
+        "Prior Knowledge",
+        "Course Relevance",
+        "Teaching Support",
+        "Company Support",
+        "Family Support",
+        SELF_STUDY_COL,
+    ]:
         if col in df.columns:
             axes.append(col)
             labels.append(PERCEPTION_LABEL_MAP.get(col, col))
@@ -2968,6 +1383,7 @@ def make_radar_chart(df: pd.DataFrame) -> go.Figure:
 
 
 def make_cohort_trend(df: pd.DataFrame, mode: str = "course") -> go.Figure:
+    """Plot cohort risk rates over academic periods."""
     if df.empty:
         return _dash_empty_figure("Risk Rate Over Period")
 
@@ -2985,7 +1401,11 @@ def make_cohort_trend(df: pd.DataFrame, mode: str = "course") -> go.Figure:
         .reset_index(name="high_risk_rate")
     )
 
-    period_order = _sort_periods(grouped[period_col].astype(str).unique().tolist()) if "_sort_periods" in globals() else sorted(grouped[period_col].astype(str).unique().tolist())
+    period_order = (
+        _sort_periods(grouped[period_col].astype(str).unique().tolist())
+        if "_sort_periods" in globals()
+        else sorted(grouped[period_col].astype(str).unique().tolist())
+    )
     grouped[period_col] = pd.Categorical(grouped[period_col].astype(str), categories=period_order, ordered=True)
     grouped = grouped.sort_values(period_col)
 
@@ -3006,6 +1426,7 @@ def make_cohort_trend(df: pd.DataFrame, mode: str = "course") -> go.Figure:
         height=420,
         subtitle="Track risk trends over time by course level or funding group.",
     )
+
 
 # =========================
 # 4.5) Advanced Feature Engineering (Derived Metrics)
@@ -3102,11 +1523,12 @@ def add_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
             )
             out[RISK_FLAG_COL] = (out[RISK_TIER_COL] == "High").astype("Int64")
 
-
     perception_norm = _normalize(out[PERCEPTION_SCORE_COL]) if PERCEPTION_SCORE_COL in out.columns else None
     study_norm = _normalize(out[SELF_STUDY_COL]) if SELF_STUDY_COL in out.columns else None
-    attend_norm = out["Attendance (Norm)"] if "Attendance (Norm)" in out.columns else (
-        _normalize(out[ATTEND_COL]) if ATTEND_COL in out.columns else None
+    attend_norm = (
+        out["Attendance (Norm)"]
+        if "Attendance (Norm)" in out.columns
+        else (_normalize(out[ATTEND_COL]) if ATTEND_COL in out.columns else None)
     )
 
     engagement_score = _weighted_index(
@@ -3184,7 +1606,8 @@ if "LIKERT_COLS" in globals():
     likert_dim_options = [col for col in LIKERT_COLS if col in dash_df.columns]
 else:
     likert_dim_options = [
-        col for col in ["Prior Knowledge", "Course Relevance", "Teaching Support", "Company Support", "Family Support"]
+        col
+        for col in ["Prior Knowledge", "Course Relevance", "Teaching Support", "Company Support", "Family Support"]
         if col in dash_df.columns
     ]
 likert_mode_options = [
@@ -3232,9 +1655,6 @@ d2_gap_risk_options = [
 ]
 
 
-
-
-
 gpa_min = float(pd.to_numeric(dash_df[GPA_COL], errors="coerce").min()) if GPA_COL in dash_df.columns else 0.0
 gpa_max = float(pd.to_numeric(dash_df[GPA_COL], errors="coerce").max()) if GPA_COL in dash_df.columns else 4.0
 if np.isnan(gpa_min) or np.isnan(gpa_max):
@@ -3270,6 +1690,7 @@ logo_src = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQzDwzohm4UyVe3
 dashboard_1_config = {"displayModeBar": False}
 dashboard_2_config = {"displayModeBar": False}
 
+
 def _apply_filters(df, period, course_level, course_name, funding, qualification, gpa_range, att_range):
     out = df.copy()
 
@@ -3293,13 +1714,28 @@ def _apply_filters(df, period, course_level, course_name, funding, qualification
 
     if periods and "All" not in periods and PERIOD_COL in out.columns and not _same_selection(periods, period_options):
         out = out[out[PERIOD_COL].astype(str).isin(periods)]
-    if levels and "All" not in levels and COURSE_LEVEL_COL in out.columns and not _same_selection(levels, course_level_options):
+    if (
+        levels
+        and "All" not in levels
+        and COURSE_LEVEL_COL in out.columns
+        and not _same_selection(levels, course_level_options)
+    ):
         out = out[out[COURSE_LEVEL_COL].astype(str).isin(levels)]
     if courses and "All" not in courses and course_col in out.columns and not _same_selection(courses, course_options):
         out = out[out[course_col].astype(str).isin(courses)]
-    if funding_vals and "All" not in funding_vals and COURSE_FUNDING_COL in out.columns and not _same_selection(funding_vals, funding_options):
+    if (
+        funding_vals
+        and "All" not in funding_vals
+        and COURSE_FUNDING_COL in out.columns
+        and not _same_selection(funding_vals, funding_options)
+    ):
         out = out[out[COURSE_FUNDING_COL].astype(str).isin(funding_vals)]
-    if qualifications and "All" not in qualifications and HIGHEST_EDU_COL in out.columns and not _same_selection(qualifications, highest_edu_options):
+    if (
+        qualifications
+        and "All" not in qualifications
+        and HIGHEST_EDU_COL in out.columns
+        and not _same_selection(qualifications, highest_edu_options)
+    ):
         out = out[out[HIGHEST_EDU_COL].astype(str).isin(qualifications)]
     if GPA_COL in out.columns and gpa_range is not None:
         if isinstance(gpa_range, (list, tuple)) and len(gpa_range) == 2:
@@ -3411,7 +1847,7 @@ def _delta_display(current, baseline, higher_is_good, decimals=2, unit=""):
     if abs(diff) < 1e-6:
         return (f"- 0.00{unit} vs overall", "kpi-delta kpi-neutral")
 
-    arrow = "\u25B2" if diff > 0 else "\u25BC"
+    arrow = "\u25b2" if diff > 0 else "\u25bc"
     good = diff > 0 if higher_is_good else diff < 0
     cls = "kpi-delta kpi-good" if good else "kpi-delta kpi-bad"
     sign = "+" if diff > 0 else ""
@@ -3428,7 +1864,7 @@ def _delta_display_count(current, baseline, higher_is_good=None):
     if diff == 0:
         return ("- 0.00 vs overall", "kpi-delta kpi-neutral")
 
-    arrow = "\u25B2" if diff > 0 else "\u25BC"
+    arrow = "\u25b2" if diff > 0 else "\u25bc"
     sign = "+" if diff > 0 else ""
     if higher_is_good is None:
         cls = "kpi-delta kpi-neutral"
@@ -3555,7 +1991,9 @@ def _attach_mode(df: pd.DataFrame) -> Tuple[pd.DataFrame, Optional[str]]:
     if not mode_col:
         return out, None
     mode = out[mode_col].astype("string").str.strip().str.lower()
-    mode = mode.replace({"full time": "Full-time", "full-time": "Full-time", "part time": "Part-time", "part-time": "Part-time"})
+    mode = mode.replace(
+        {"full time": "Full-time", "full-time": "Full-time", "part time": "Part-time", "part-time": "Part-time"}
+    )
     out["_study_mode"] = mode.replace({"": "Unknown", "n.a.": "Unknown"}).fillna("Unknown").str.title()
     return out, "_study_mode"
 
@@ -3631,8 +2069,6 @@ def _apply_plotly_theme(fig: go.Figure, theme: str = "light") -> go.Figure:
     return fig
 
 
-
-
 def _survey_columns(df: pd.DataFrame) -> Tuple[List[str], Optional[str], List[str]]:
     default_likert = [
         "Prior Knowledge",
@@ -3674,8 +2110,12 @@ def _compute_survey_kpis(df: pd.DataFrame, gpa_thr: float, att_thr: float) -> Di
     risk_df["_support_index"] = support_index
     high_df = risk_df[risk_df[RISK_TIER_COL] == "High"]
 
-    avg_support_overall = float(pd.to_numeric(risk_df["_support_index"], errors="coerce").mean()) if support_cols else float("nan")
-    avg_support_high = float(pd.to_numeric(high_df["_support_index"], errors="coerce").mean()) if support_cols else float("nan")
+    avg_support_overall = (
+        float(pd.to_numeric(risk_df["_support_index"], errors="coerce").mean()) if support_cols else float("nan")
+    )
+    avg_support_high = (
+        float(pd.to_numeric(high_df["_support_index"], errors="coerce").mean()) if support_cols else float("nan")
+    )
 
     avg_study_overall = float(pd.to_numeric(risk_df[self_col], errors="coerce").mean()) if self_col else float("nan")
     avg_study_high = float(pd.to_numeric(high_df[self_col], errors="coerce").mean()) if self_col else float("nan")
@@ -3717,6 +2157,7 @@ def make_dashboard_2_figures(
     gap_measure: Optional[str] = None,
     gap_topn: Optional[int] = None,
 ) -> Dict[str, go.Figure]:
+    """Create the perception and study-behaviour dashboard figures."""
     figs: Dict[str, go.Figure] = {}
 
     def _safe_float(value, fallback):
@@ -3979,6 +2420,7 @@ def make_dashboard_2_figures(
     if "Teaching Support" in risk_df.columns and "Course Relevance" in risk_df.columns:
         quad_pairs.append(("Teaching Support", "Course Relevance", "Support vs Relevance"))
     if quad_pairs:
+
         def _build_quad(x_col, y_col):
             df_local = risk_df.copy()
             df_local["_x"] = pd.to_numeric(df_local[x_col], errors="coerce")
@@ -4006,14 +2448,60 @@ def make_dashboard_2_figures(
             x_min, x_max = float(df_local["_x"].min()), float(df_local["_x"].max())
             y_min, y_max = float(df_local["_y"].min()), float(df_local["_y"].max())
             shapes = [
-                dict(type="line", x0=med_x, x1=med_x, y0=df_local["_y"].min(), y1=df_local["_y"].max(), line=dict(color="rgba(123,223,242,0.4)", dash="dot")),
-                dict(type="line", y0=med_y, y1=med_y, x0=df_local["_x"].min(), x1=df_local["_x"].max(), line=dict(color="rgba(123,223,242,0.4)", dash="dot")),
+                dict(
+                    type="line",
+                    x0=med_x,
+                    x1=med_x,
+                    y0=df_local["_y"].min(),
+                    y1=df_local["_y"].max(),
+                    line=dict(color="rgba(123,223,242,0.4)", dash="dot"),
+                ),
+                dict(
+                    type="line",
+                    y0=med_y,
+                    y1=med_y,
+                    x0=df_local["_x"].min(),
+                    x1=df_local["_x"].max(),
+                    line=dict(color="rgba(123,223,242,0.4)", dash="dot"),
+                ),
             ]
             annotations = [
-                dict(x=x_min, y=y_min, xanchor="left", yanchor="bottom", text=f"Low {x_col}<br>Low {y_col}", showarrow=False, font=dict(size=10, color="#8C7E96")),
-                dict(x=x_max, y=y_min, xanchor="right", yanchor="bottom", text=f"High {x_col}<br>Low {y_col}", showarrow=False, font=dict(size=10, color="#8C7E96")),
-                dict(x=x_min, y=y_max, xanchor="left", yanchor="top", text=f"Low {x_col}<br>High {y_col}", showarrow=False, font=dict(size=10, color="#8C7E96")),
-                dict(x=x_max, y=y_max, xanchor="right", yanchor="top", text=f"High {x_col}<br>High {y_col}", showarrow=False, font=dict(size=10, color="#8C7E96")),
+                dict(
+                    x=x_min,
+                    y=y_min,
+                    xanchor="left",
+                    yanchor="bottom",
+                    text=f"Low {x_col}<br>Low {y_col}",
+                    showarrow=False,
+                    font=dict(size=10, color="#8C7E96"),
+                ),
+                dict(
+                    x=x_max,
+                    y=y_min,
+                    xanchor="right",
+                    yanchor="bottom",
+                    text=f"High {x_col}<br>Low {y_col}",
+                    showarrow=False,
+                    font=dict(size=10, color="#8C7E96"),
+                ),
+                dict(
+                    x=x_min,
+                    y=y_max,
+                    xanchor="left",
+                    yanchor="top",
+                    text=f"Low {x_col}<br>High {y_col}",
+                    showarrow=False,
+                    font=dict(size=10, color="#8C7E96"),
+                ),
+                dict(
+                    x=x_max,
+                    y=y_max,
+                    xanchor="right",
+                    yanchor="top",
+                    text=f"High {x_col}<br>High {y_col}",
+                    showarrow=False,
+                    font=dict(size=10, color="#8C7E96"),
+                ),
             ]
             return traces, shapes, annotations
 
@@ -4161,7 +2649,11 @@ def make_dashboard_2_figures(
                             label="Pearson: Survey vs Outcomes",
                             method="update",
                             args=[
-                                {"z": [pear_survey.values], "x": [pear_survey.columns.tolist()], "y": [pear_survey.index.tolist()]},
+                                {
+                                    "z": [pear_survey.values],
+                                    "x": [pear_survey.columns.tolist()],
+                                    "y": [pear_survey.index.tolist()],
+                                },
                                 {"title": {"text": "B7. Correlation: Survey vs Outcomes (Pearson)"}},
                             ],
                         ),
@@ -4169,7 +2661,11 @@ def make_dashboard_2_figures(
                             label="Spearman: Survey vs Outcomes",
                             method="update",
                             args=[
-                                {"z": [spear_survey.values], "x": [spear_survey.columns.tolist()], "y": [spear_survey.index.tolist()]},
+                                {
+                                    "z": [spear_survey.values],
+                                    "x": [spear_survey.columns.tolist()],
+                                    "y": [spear_survey.index.tolist()],
+                                },
                                 {"title": {"text": "Correlation: Survey vs Outcomes (Spearman)"}},
                             ],
                         ),
@@ -4225,7 +2721,11 @@ def make_dashboard_2_figures(
                 orientation="h",
                 marker_color="#FF8FB1",
                 customdata=base_gaps,
-                hovertemplate=f"%{{y}}<br>{target_level} Risk {measure.title()}=%{{x:.2f}}<br>Gap vs Overall=%{{customdata:.2f}}<extra></extra>",
+                hovertemplate=(
+                    f"%{{y}}<br>{target_level} Risk "
+                    f"{measure.title()}=%{{x:.2f}}<br>"
+                    "Gap vs Overall=%{customdata:.2f}<extra></extra>"
+                ),
             )
         )
         gap_fig.update_layout(
@@ -4239,6 +2739,8 @@ def make_dashboard_2_figures(
         figs["d2_gap"].update_layout(title=dict(text="B8. High Risk Priorities (Unavailable)", x=0.01))
 
     return figs
+
+
 def make_dashboard_1_figures(
     df: pd.DataFrame,
     top_n: int = 12,
@@ -4299,18 +2801,10 @@ def make_dashboard_1_figures(
         scatter_df["_student"] = (
             scatter_df[STUDENT_ID_COL].astype("string") if STUDENT_ID_COL in scatter_df.columns else "N.A."
         )
-        scatter_df["_course"] = (
-            scatter_df[course_col].astype("string") if course_col in scatter_df.columns else "N.A."
-        )
-        scatter_df["_period"] = (
-            scatter_df[PERIOD_COL].astype("string") if PERIOD_COL in scatter_df.columns else "N.A."
-        )
-        scatter_df["_residency"] = (
-            scatter_df[residency_col].astype("string") if residency_col else "N.A."
-        )
-        scatter_df["_mode"] = (
-            scatter_df[mode_col].astype("string") if mode_col else "N.A."
-        )
+        scatter_df["_course"] = scatter_df[course_col].astype("string") if course_col in scatter_df.columns else "N.A."
+        scatter_df["_period"] = scatter_df[PERIOD_COL].astype("string") if PERIOD_COL in scatter_df.columns else "N.A."
+        scatter_df["_residency"] = scatter_df[residency_col].astype("string") if residency_col else "N.A."
+        scatter_df["_mode"] = scatter_df[mode_col].astype("string") if mode_col else "N.A."
 
         custom_cols = ["_student", "_course", "_period", "_residency", "_mode"]
         risk_map = px.scatter(
@@ -4373,9 +2867,7 @@ def make_dashboard_1_figures(
             density_trace.opacity = 0.75
             density_trace.showlegend = False
             density_trace.showscale = False
-            density_trace.hovertemplate = (
-                "Attendance=%{x:.1f}%<br>GPA=%{y:.2f}<br>Density=%{z}<extra></extra>"
-            )
+            density_trace.hovertemplate = "Attendance=%{x:.1f}%<br>GPA=%{y:.2f}<br>Density=%{z}<extra></extra>"
             risk_map.add_trace(density_trace)
 
             total_traces = len(risk_map.data)
@@ -4424,22 +2916,22 @@ def make_dashboard_1_figures(
     # D1-2 Sunburst - Risk Concentration by Cohort
     # ----------------------------
     sun_source = sunburst_df if sunburst_df is not None else snapshot_df
-    sun_source = _latest_semester_snapshot(sun_source) if "_latest_semester_snapshot" in globals() else sun_source.copy()
+    sun_source = (
+        _latest_semester_snapshot(sun_source) if "_latest_semester_snapshot" in globals() else sun_source.copy()
+    )
     sun_df = _ensure_risk(sun_source)
     sun_df[RISK_TIER_COL] = sun_df[RISK_TIER_COL].fillna("Unknown")
-    sun_df = sun_df[
-        sun_df[RISK_TIER_COL]
-        .astype("string")
-        .str.strip()
-        .str.lower()
-        .ne("unknown")
-    ]
+    sun_df = sun_df[sun_df[RISK_TIER_COL].astype("string").str.strip().str.lower().ne("unknown")]
     sun_df, sun_residency_col = _attach_residency(sun_df)
     sun_df, sun_mode_col = _attach_mode(sun_df)
     sun_df, sun_gender_col = _attach_gender(sun_df)
     sun_df, _ = _attach_age_group(sun_df)
 
-    level_col = COURSE_LEVEL_COL if COURSE_LEVEL_COL in sun_df.columns else (course_col if course_col in sun_df.columns else None)
+    level_col = (
+        COURSE_LEVEL_COL
+        if COURSE_LEVEL_COL in sun_df.columns
+        else (course_col if course_col in sun_df.columns else None)
+    )
     age_col = "_age_group" if "_age_group" in sun_df.columns else None
     qual_col = HIGHEST_EDU_COL if HIGHEST_EDU_COL in sun_df.columns else None
     fund_col = COURSE_FUNDING_COL if COURSE_FUNDING_COL in sun_df.columns else None
@@ -4489,8 +2981,7 @@ def make_dashboard_1_figures(
             customdata.append(padded + [pct_root])
 
         hovertemplate = (
-            f"<b>%{{label}}</b><br>Count=%{{value}}"
-            f"<br>% within group=%{{customdata[{max_level}]:.1f}}%<extra></extra>"
+            f"<b>%{{label}}</b><br>Count=%{{value}}<br>% within group=%{{customdata[{max_level}]:.1f}}%<extra></extra>"
         )
         return {
             "ids": ids,
@@ -4507,9 +2998,13 @@ def make_dashboard_1_figures(
     path_options = []
     if level_col:
         if sun_mode_col and sun_residency_col:
-            path_options.append(("Risk -> Level -> Mode -> Residency", [RISK_TIER_COL, level_col, sun_mode_col, sun_residency_col]))
+            path_options.append(
+                ("Risk -> Level -> Mode -> Residency", [RISK_TIER_COL, level_col, sun_mode_col, sun_residency_col])
+            )
         if sun_gender_col and sun_residency_col:
-            path_options.append(("Risk -> Level -> Gender -> Residency", [RISK_TIER_COL, level_col, sun_gender_col, sun_residency_col]))
+            path_options.append(
+                ("Risk -> Level -> Gender -> Residency", [RISK_TIER_COL, level_col, sun_gender_col, sun_residency_col])
+            )
         if sun_residency_col:
             path_options.append(("Risk -> Level -> Residency", [RISK_TIER_COL, level_col, sun_residency_col]))
         if sun_mode_col:
@@ -4526,7 +3021,9 @@ def make_dashboard_1_figures(
     if fund_col and sun_residency_col:
         path_options.append(("Risk -> Funding -> Residency", [RISK_TIER_COL, fund_col, sun_residency_col]))
     if qual_col and sun_residency_col:
-        path_options.append(("Risk -> Highest Qualification -> Residency", [RISK_TIER_COL, qual_col, sun_residency_col]))
+        path_options.append(
+            ("Risk -> Highest Qualification -> Residency", [RISK_TIER_COL, qual_col, sun_residency_col])
+        )
 
     sun_configs = []
     for label, cols in path_options:
@@ -4704,7 +3201,7 @@ def make_dashboard_1_figures(
             margin=dict(l=20, r=20, t=110, b=20),
         )
 
-# ----------------------------
+    # ----------------------------
     # D1-4 High Risk Hotspots Ranking
     # ----------------------------
     hotspot_fig = go.Figure()
@@ -4716,11 +3213,7 @@ def make_dashboard_1_figures(
         hot_df[course_col] = hot_df[course_col].astype("string").str.strip()
         hot_df = hot_df[hot_df[course_col].notna() & (hot_df[course_col].str.len() > 0)]
         if not hot_df.empty:
-            counts = (
-                hot_df.groupby([course_col, RISK_TIER_COL], observed=False)
-                .size()
-                .reset_index(name="Count")
-            )
+            counts = hot_df.groupby([course_col, RISK_TIER_COL], observed=False).size().reset_index(name="Count")
             totals = counts.groupby(course_col, observed=False)["Count"].sum().rename("Total")
             counts = counts.join(totals, on=course_col)
             counts["Pct"] = counts["Count"] / counts["Total"] * 100.0
@@ -4894,7 +3387,7 @@ def make_dashboard_1_figures(
             legend=dict(x=0.98, y=0.02, xanchor="right", yanchor="bottom"),
         )
 
-# ----------------------------
+    # ----------------------------
     # D1-5 Risk Over Time Trend Line
     # ----------------------------
     trend_fig = go.Figure()
@@ -4905,8 +3398,6 @@ def make_dashboard_1_figures(
         def _period_key(val):
             match = re.search(r"(\d+)", str(val))
             return int(match.group(1)) if match else 999
-
-        period_order = sorted(trend_df[PERIOD_COL].dropna().unique().tolist(), key=_period_key)
 
         def _risk_rate(df_local, group_col=None):
             if group_col:
@@ -4934,7 +3425,11 @@ def make_dashboard_1_figures(
         )
         trend_fig.add_trace(overall_raw)
 
-        course_group_col = COURSE_LEVEL_COL if COURSE_LEVEL_COL in trend_df.columns else (course_col if course_col in trend_df.columns else None)
+        course_group_col = (
+            COURSE_LEVEL_COL
+            if COURSE_LEVEL_COL in trend_df.columns
+            else (course_col if course_col in trend_df.columns else None)
+        )
         course_label = "Course Level" if course_group_col == COURSE_LEVEL_COL else "Course"
 
         course_raw = []
@@ -4959,7 +3454,12 @@ def make_dashboard_1_figures(
         res_raw = []
         if residency_full:
             res_stats = _sort_period(_risk_rate(trend_df, residency_full))
-            res_groups = res_stats.groupby(residency_full, observed=False)["Total"].sum().sort_values(ascending=False).index.tolist()
+            res_groups = (
+                res_stats.groupby(residency_full, observed=False)["Total"]
+                .sum()
+                .sort_values(ascending=False)
+                .index.tolist()
+            )
             for name in res_groups:
                 sub = res_stats[res_stats[residency_full] == name]
                 res_raw.append(
@@ -4996,16 +3496,32 @@ def make_dashboard_1_figures(
             return vis
 
         buttons = [
-            dict(label="Overall", method="update", args=[{"visible": _vis_for("overall")}, {"title": {"text": "A5. Risk Trend: High Risk Rate"}}]),
+            dict(
+                label="Overall",
+                method="update",
+                args=[{"visible": _vis_for("overall")}, {"title": {"text": "A5. Risk Trend: High Risk Rate"}}],
+            ),
         ]
         if course_raw:
-            buttons.extend([
-                dict(label=f"By {course_label}", method="update", args=[{"visible": _vis_for("course")}, {"title": {"text": f"Risk Trend: By {course_label}"}}]),
-            ])
+            buttons.extend(
+                [
+                    dict(
+                        label=f"By {course_label}",
+                        method="update",
+                        args=[{"visible": _vis_for("course")}, {"title": {"text": f"Risk Trend: By {course_label}"}}],
+                    ),
+                ]
+            )
         if res_raw:
-            buttons.extend([
-                dict(label="By Residency", method="update", args=[{"visible": _vis_for("residency")}, {"title": {"text": "Risk Trend: By Residency"}}]),
-            ])
+            buttons.extend(
+                [
+                    dict(
+                        label="By Residency",
+                        method="update",
+                        args=[{"visible": _vis_for("residency")}, {"title": {"text": "Risk Trend: By Residency"}}],
+                    ),
+                ]
+            )
 
         trend_fig.update_layout(
             title=dict(text="A5. Risk Trend: High Risk Rate", x=0.01),
@@ -5032,7 +3548,7 @@ def make_dashboard_1_figures(
             margin=dict(l=60, r=40, t=120, b=60),
         )
 
-# D1-6 GPA Distribution by Risk
+    # D1-6 GPA Distribution by Risk
     # ----------------------------
     gpa_fig = go.Figure()
     if GPA_COL in risk_full.columns:
@@ -5190,7 +3706,9 @@ init_figs_1 = make_dashboard_1_figures(
     top_n=12,
     gpa_threshold=gpa_threshold_default,
     att_threshold=att_threshold_default,
-    total_override=int(init_df[[GPA_COL, ATTEND_COL]].dropna().shape[0]) if GPA_COL in init_df.columns and ATTEND_COL in init_df.columns else None,
+    total_override=int(init_df[[GPA_COL, ATTEND_COL]].dropna().shape[0])
+    if GPA_COL in init_df.columns and ATTEND_COL in init_df.columns
+    else None,
     hotspot_df=init_df,
     sunburst_df=init_df,
     theme="light",
@@ -6603,7 +5121,7 @@ THEME_SYNC_JS = """
 
 """
 
-dash_app = Dash(__name__, assets_ignore='.*')
+dash_app = Dash(__name__, assets_ignore=".*")
 dash_app.index_string = f"""
 <!DOCTYPE html>
 <html>
@@ -6669,7 +5187,9 @@ dash_app.layout = html.Div(
                     children=[
                         html.Div("Total Students", className="kpi-label"),
                         html.Div(base_display["total_value"], id="kpi-total-value", className="kpi-value"),
-                        html.Div(base_display["total_delta"], id="kpi-total-delta", className=base_display["total_class"]),
+                        html.Div(
+                            base_display["total_delta"], id="kpi-total-delta", className=base_display["total_class"]
+                        ),
                     ],
                 ),
                 html.Div(
@@ -6768,7 +5288,9 @@ dash_app.layout = html.Div(
             children=[
                 html.Div("Research Objective", className="objective-label"),
                 html.Div(
-                    "Understand how academic outcomes, engagement, and learning behaviours interact to identify at-risk cohorts and guide targeted support.",
+                    "Understand how academic outcomes, engagement, and learning "
+                    "behaviours interact to identify at-risk cohorts and guide "
+                    "targeted support.",
                     className="objective-text",
                 ),
             ],
@@ -6860,7 +5382,11 @@ dash_app.layout = html.Div(
                                     step=0.1,
                                     value=[gpa_min, gpa_max],
                                     marks={0: "0.0", 2: "2.0", 4: "4.0"},
-                                    tooltip={"always_visible": False, "placement": "bottom", "format": {"specifier": ".1f"}},
+                                    tooltip={
+                                        "always_visible": False,
+                                        "placement": "bottom",
+                                        "format": {"specifier": ".1f"},
+                                    },
                                 ),
                                 html.Div(id="gpa-range-display", className="range-display"),
                             ],
@@ -6876,7 +5402,11 @@ dash_app.layout = html.Div(
                                     step=1.0,
                                     value=[att_min, att_max],
                                     marks={0: "0", 50: "50", 100: "100"},
-                                    tooltip={"always_visible": False, "placement": "bottom", "format": {"specifier": ".0f"}},
+                                    tooltip={
+                                        "always_visible": False,
+                                        "placement": "bottom",
+                                        "format": {"specifier": ".0f"},
+                                    },
                                 ),
                                 html.Div(id="att-range-display", className="range-display"),
                             ],
@@ -6903,7 +5433,11 @@ dash_app.layout = html.Div(
                                                     step=0.1,
                                                     value=gpa_threshold_default,
                                                     marks={0: "0.0", 2: "2.0", 4: "4.0"},
-                                                    tooltip={"always_visible": False, "placement": "bottom", "format": {"specifier": ".1f"}},
+                                                    tooltip={
+                                                        "always_visible": False,
+                                                        "placement": "bottom",
+                                                        "format": {"specifier": ".1f"},
+                                                    },
                                                 ),
                                                 html.Div(id="gpa-threshold-display", className="range-display"),
                                             ],
@@ -6919,7 +5453,11 @@ dash_app.layout = html.Div(
                                                     step=1.0,
                                                     value=att_threshold_default,
                                                     marks={0: "0", 50: "50", 100: "100"},
-                                                    tooltip={"always_visible": False, "placement": "bottom", "format": {"specifier": ".0f"}},
+                                                    tooltip={
+                                                        "always_visible": False,
+                                                        "placement": "bottom",
+                                                        "format": {"specifier": ".0f"},
+                                                    },
                                                 ),
                                                 html.Div(id="att-threshold-display", className="range-display"),
                                             ],
@@ -6949,20 +5487,74 @@ dash_app.layout = html.Div(
                             children=[
                                 html.Div("Research Question - Dashboard 1 (Goh Kun Ming)", className="question-label"),
                                 html.Div(
-                                    "How do student background factors and semester trends in GPA and attendance reveal emerging risk patterns?",
+                                    "How do student background factors and semester "
+                                    "trends in GPA and attendance reveal emerging "
+                                    "risk patterns?",
                                     className="question-text",
                                 ),
                             ],
                         ),
-                        html.Div(className="chart-grid", children=[
-                            html.Div(dcc.Graph(id="gpa-vs-att", figure=init_figs_1.get("gpa_vs_att", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-7"),
-                            html.Div(dcc.Graph(id="risk-quadrant", figure=init_figs_1.get("risk_quadrant", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-5"),
-                            html.Div(dcc.Graph(id="course-matrix", figure=init_figs_1.get("course_matrix", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-12"),
-                            html.Div(dcc.Graph(id="funding-level-matrix", figure=init_figs_1.get("funding_level_matrix", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-6"),
-                            html.Div(dcc.Graph(id="cohort-trend", figure=init_figs_1.get("cohort_trend", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-6"),
-                            html.Div(dcc.Graph(id="gpa-dist", figure=init_figs_1.get("gpa_dist", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-6"),
-                            html.Div(dcc.Graph(id="kpi-chart", figure=init_figs_1.get("kpi", go.Figure()), config=dashboard_1_config), className="chart-card chart-span-6"),
-                        ]),
+                        html.Div(
+                            className="chart-grid",
+                            children=[
+                                html.Div(
+                                    dcc.Graph(
+                                        id="gpa-vs-att",
+                                        figure=init_figs_1.get("gpa_vs_att", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-7",
+                                ),
+                                html.Div(
+                                    dcc.Graph(
+                                        id="risk-quadrant",
+                                        figure=init_figs_1.get("risk_quadrant", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-5",
+                                ),
+                                html.Div(
+                                    dcc.Graph(
+                                        id="course-matrix",
+                                        figure=init_figs_1.get("course_matrix", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-12",
+                                ),
+                                html.Div(
+                                    dcc.Graph(
+                                        id="funding-level-matrix",
+                                        figure=init_figs_1.get("funding_level_matrix", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-6",
+                                ),
+                                html.Div(
+                                    dcc.Graph(
+                                        id="cohort-trend",
+                                        figure=init_figs_1.get("cohort_trend", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-6",
+                                ),
+                                html.Div(
+                                    dcc.Graph(
+                                        id="gpa-dist",
+                                        figure=init_figs_1.get("gpa_dist", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-6",
+                                ),
+                                html.Div(
+                                    dcc.Graph(
+                                        id="kpi-chart",
+                                        figure=init_figs_1.get("kpi", go.Figure()),
+                                        config=dashboard_1_config,
+                                    ),
+                                    className="chart-card chart-span-6",
+                                ),
+                            ],
+                        ),
                     ],
                 ),
                 dcc.Tab(
@@ -6976,7 +5568,9 @@ dash_app.layout = html.Div(
                             children=[
                                 html.Div("Research Question - Dashboard 2 (Goh Jenson)", className="question-label"),
                                 html.Div(
-                                    "Which modifiable survey factors differentiate at-risk students, and what targeted interventions should be prioritised?",
+                                    "Which modifiable survey factors differentiate "
+                                    "at-risk students, and what targeted interventions "
+                                    "should be prioritised?",
                                     className="question-text",
                                 ),
                             ],
@@ -7010,200 +5604,246 @@ dash_app.layout = html.Div(
                                 ),
                             ],
                         ),
-                        html.Div(className="chart-grid", children=[
-                            html.Div(
-                                className="chart-card chart-span-7",
-                                children=[
-                                    dcc.Graph(id="d2-heatmap", figure=init_figs_2.get("d2_heatmap", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-5",
-                                children=[
-                                    html.Div(
-                                        className="chart-toolbar",
-                                        children=[
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("X-Axis", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-reg-x",
-                                                        options=d2_reg_x_options,
-                                                        value=d2_reg_x_options[0]["value"] if d2_reg_x_options else None,
-                                                        clearable=False,
-                                                        className="kpi-dropdown",
-                                                    ),
-                                                ],
-                                            ),
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Y-Axis", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-reg-y",
-                                                        options=d2_reg_y_options,
-                                                        value=d2_reg_y_options[0]["value"] if d2_reg_y_options else None,
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--small",
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    dcc.Graph(id="d2-bubble", figure=init_figs_2.get("d2_bubble", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-6",
-                                children=[
-                                    html.Div(
-                                        className="chart-toolbar",
-                                        children=[
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Dimension", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-likert-dim",
-                                                        options=[{"label": col, "value": col} for col in likert_dim_options],
-                                                        value=likert_dim_options[0] if likert_dim_options else None,
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--wide",
-                                                    ),
-                                                ],
-                                            ),
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Metric", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-likert-mode",
-                                                        options=likert_mode_options,
-                                                        value="Percent",
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--small",
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    dcc.Graph(id="d2-likert", figure=init_figs_2.get("d2_likert", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-6",
-                                children=[
-                                    html.Div(
-                                        className="chart-toolbar",
-                                        children=[
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Metric", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-study-toggle",
-                                                        options=d2_study_toggle_options,
-                                                        value="study",
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--wide",
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    dcc.Graph(id="d2-self-study", figure=init_figs_2.get("d2_self_study", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-6",
-                                children=[
-                                    dcc.Graph(id="d2-quadrant", figure=init_figs_2.get("d2_quadrant", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-6",
-                                children=[
-                                    html.Div(
-                                        className="chart-toolbar",
-                                        children=[
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Profile", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-radar-toggle",
-                                                        options=d2_radar_toggle_options,
-                                                        value="without",
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--wide",
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    dcc.Graph(id="d2-radar", figure=init_figs_2.get("d2_radar", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-12",
-                                children=[
-                                    dcc.Graph(id="d2-corr", figure=init_figs_2.get("d2_corr", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                            html.Div(
-                                className="chart-card chart-span-12",
-                                children=[
-                                    html.Div(
-                                        className="chart-toolbar",
-                                        children=[
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Risk Level", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-gap-risk",
-                                                        options=d2_gap_risk_options,
-                                                        value="High",
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--small",
-                                                    ),
-                                                ],
-                                            ),
-                                            html.Div(
-                                                className="chart-control",
-                                                children=[
-                                                    html.Div("Measure", className="chart-control__label"),
-                                                    dcc.Dropdown(
-                                                        id="d2-gap-measure",
-                                                        options=d2_gap_measure_options,
-                                                        value="mean",
-                                                        clearable=False,
-                                                        className="kpi-dropdown kpi-dropdown--small",
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    html.Div(
-                                        className="chart-slider",
-                                        children=[
-                                            html.Div(f"Top N: Top {d2_gap_topn_default}", id="d2-gap-topn-label", className="gap-slider-label"),
-                                            dcc.Slider(
-                                                id="d2-gap-topn",
-                                                min=1,
-                                                max=d2_gap_topn_max,
-                                                step=1,
-                                                value=d2_gap_topn_default,
-                                                marks={n: f"Top {n}" for n in range(1, d2_gap_topn_max + 1)},
-                                                className="gap-slider",
-                                            ),
-                                        ],
-                                    ),
-                                    dcc.Graph(id="d2-gap", figure=init_figs_2.get("d2_gap", go.Figure()), config=dashboard_2_config),
-                                ],
-                            ),
-                        ]),
+                        html.Div(
+                            className="chart-grid",
+                            children=[
+                                html.Div(
+                                    className="chart-card chart-span-7",
+                                    children=[
+                                        dcc.Graph(
+                                            id="d2-heatmap",
+                                            figure=init_figs_2.get("d2_heatmap", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-5",
+                                    children=[
+                                        html.Div(
+                                            className="chart-toolbar",
+                                            children=[
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("X-Axis", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-reg-x",
+                                                            options=d2_reg_x_options,
+                                                            value=d2_reg_x_options[0]["value"]
+                                                            if d2_reg_x_options
+                                                            else None,
+                                                            clearable=False,
+                                                            className="kpi-dropdown",
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Y-Axis", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-reg-y",
+                                                            options=d2_reg_y_options,
+                                                            value=d2_reg_y_options[0]["value"]
+                                                            if d2_reg_y_options
+                                                            else None,
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--small",
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        dcc.Graph(
+                                            id="d2-bubble",
+                                            figure=init_figs_2.get("d2_bubble", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-6",
+                                    children=[
+                                        html.Div(
+                                            className="chart-toolbar",
+                                            children=[
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Dimension", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-likert-dim",
+                                                            options=[
+                                                                {"label": col, "value": col}
+                                                                for col in likert_dim_options
+                                                            ],
+                                                            value=likert_dim_options[0] if likert_dim_options else None,
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--wide",
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Metric", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-likert-mode",
+                                                            options=likert_mode_options,
+                                                            value="Percent",
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--small",
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        dcc.Graph(
+                                            id="d2-likert",
+                                            figure=init_figs_2.get("d2_likert", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-6",
+                                    children=[
+                                        html.Div(
+                                            className="chart-toolbar",
+                                            children=[
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Metric", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-study-toggle",
+                                                            options=d2_study_toggle_options,
+                                                            value="study",
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--wide",
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        dcc.Graph(
+                                            id="d2-self-study",
+                                            figure=init_figs_2.get("d2_self_study", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-6",
+                                    children=[
+                                        dcc.Graph(
+                                            id="d2-quadrant",
+                                            figure=init_figs_2.get("d2_quadrant", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-6",
+                                    children=[
+                                        html.Div(
+                                            className="chart-toolbar",
+                                            children=[
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Profile", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-radar-toggle",
+                                                            options=d2_radar_toggle_options,
+                                                            value="without",
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--wide",
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        dcc.Graph(
+                                            id="d2-radar",
+                                            figure=init_figs_2.get("d2_radar", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-12",
+                                    children=[
+                                        dcc.Graph(
+                                            id="d2-corr",
+                                            figure=init_figs_2.get("d2_corr", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="chart-card chart-span-12",
+                                    children=[
+                                        html.Div(
+                                            className="chart-toolbar",
+                                            children=[
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Risk Level", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-gap-risk",
+                                                            options=d2_gap_risk_options,
+                                                            value="High",
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--small",
+                                                        ),
+                                                    ],
+                                                ),
+                                                html.Div(
+                                                    className="chart-control",
+                                                    children=[
+                                                        html.Div("Measure", className="chart-control__label"),
+                                                        dcc.Dropdown(
+                                                            id="d2-gap-measure",
+                                                            options=d2_gap_measure_options,
+                                                            value="mean",
+                                                            clearable=False,
+                                                            className="kpi-dropdown kpi-dropdown--small",
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        html.Div(
+                                            className="chart-slider",
+                                            children=[
+                                                html.Div(
+                                                    f"Top N: Top {d2_gap_topn_default}",
+                                                    id="d2-gap-topn-label",
+                                                    className="gap-slider-label",
+                                                ),
+                                                dcc.Slider(
+                                                    id="d2-gap-topn",
+                                                    min=1,
+                                                    max=d2_gap_topn_max,
+                                                    step=1,
+                                                    value=d2_gap_topn_default,
+                                                    marks={n: f"Top {n}" for n in range(1, d2_gap_topn_max + 1)},
+                                                    className="gap-slider",
+                                                ),
+                                            ],
+                                        ),
+                                        dcc.Graph(
+                                            id="d2-gap",
+                                            figure=init_figs_2.get("d2_gap", go.Figure()),
+                                            config=dashboard_2_config,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
                     ],
                 ),
             ],
@@ -7264,7 +5904,9 @@ def _update_sunburst_filter(click_data, current):
         tmp, res_col = _attach_residency(tmp)
         tmp, mode_col = _attach_mode(tmp)
         tmp, gender_col = _attach_gender(tmp)
-        level_col = COURSE_LEVEL_COL if COURSE_LEVEL_COL in tmp.columns else (course_col if course_col in tmp.columns else None)
+        level_col = (
+            COURSE_LEVEL_COL if COURSE_LEVEL_COL in tmp.columns else (course_col if course_col in tmp.columns else None)
+        )
 
         path_cols = [RISK_TIER_COL]
         if level_col:
@@ -7394,7 +6036,6 @@ def _switch_theme(value):
         Input("theme-switch", "value"),
     ],
 )
-
 def _update_dash(
     period,
     course_level,
@@ -7600,6 +6241,7 @@ def _update_dash(
         figs_2.get("d2_gap", go.Figure()),
     )
 
+
 # Expose WSGI server for gunicorn.
 server = dash_app.server
 
@@ -7615,4 +6257,3 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")
     debug = os.getenv("DASH_DEBUG", "false").lower() in {"1", "true", "yes", "on"}
     dash_app.run(host=host, port=port, debug=debug)
-
