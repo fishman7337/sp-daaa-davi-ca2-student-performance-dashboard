@@ -10,6 +10,15 @@ extend-exclude = [
     "notebooks",
 ]
 
+[tool.ruff.lint]
+select = ["D", "E", "F", "I"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
+
 [tool.bandit]
 exclude_dirs = [
     ".git",

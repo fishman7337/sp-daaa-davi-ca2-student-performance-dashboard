@@ -2,6 +2,15 @@
 
 Dash analytics dashboard and notebook workflow for the ST1502 Data Visualisation CA2 project.
 
+## Evidence and interpretation
+
+| Evidence-backed measure | Current repository evidence |
+| --- | --- |
+| Automated validation | **8 tests** cover dashboard helpers, data contracts, repository structure, and notebook validity. |
+| Implemented risk rule | The reusable app derives three risk tiers from the latest-semester **GPA and attendance** thresholds. |
+
+The qualitative outcome is an interactive analytics and intervention-planning dashboard with cohort, trend, survey, and risk visualisations. It supports exploratory prioritisation; it does not prove causal drivers or intervention effectiveness.
+
 ## Academic Context
 
 This project was completed under Singapore Polytechnic, School of Computing, Diploma in Applied AI & Analytics. It was produced for the Data Visualisation module (`ST1502`) CA2 in AY25/26 Year 2 Semester 2 by Goh Kun Ming and Goh Jenson, DAAA students. The lecturer for the module was Senior Lecturer Peter Lee Wai Tong.

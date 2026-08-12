@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from conftest import PROJECT_ROOT
-
 
 EXPECTED_FILES = [
     ".env.example",
